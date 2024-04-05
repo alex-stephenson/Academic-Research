@@ -1,0 +1,61 @@
+---
+title: "2008_report"
+output: html_document
+---
+
+
+---
+title: "EU_analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(pdftools)
+library(tidyverse)
+library(tidytext)
+```
+
+```{r}
+EU_text_2016 <- pdf_text("2016_CA_Strategy_Implementation_Review.pdf") %>% 
+  readr::read_lines() %>% 
+  str_squish()
+
+EU_text_2016_long <- paste(EU_text_2016, collapse = ' ')
+
+EU_text_2016_long <- EU_text_2016_long %>% 
+  as.data.frame() 
+
+colnames(EU_text_2016_long) <- c('Text')
+
+EU_text_2016_long <- EU_text_2016_long %>%
+  mutate(Year = 2016) %>% 
+  mutate(Text = as.character(Text))
+
+
+EU_text_2016_tokens <- EU_text_2016_long %>% 
+  unnest_tokens(tokens, Text, token = "words")
+
+
+trade_terms <- c('trade', 'surplus', 'economy', 'debt', 'finance', 'resources', 'resource', 'gas', 'oil', 'investment', 'economic')
+political_terms <- c('democracy', 'rights', 'corruption', 'poverty', 'education', 'governance')
+
+trade_2016 <- EU_text_2016_tokens %>% 
+  filter(tokens %in% trade_terms)
+
+
+political_2016 <- EU_text_2016_tokens %>% 
+  filter(tokens %in% political_terms)
+
+```
+
+
+
+
+
+
+
+

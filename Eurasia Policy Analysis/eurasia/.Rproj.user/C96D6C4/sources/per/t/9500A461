@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1612539825336.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2458782433",
+    "id" : "9500A461",
+    "lastKnownWriteTime" : 1598166667,
+    "last_content_update" : 1598166667,
+    "path" : "~/Desktop/R_Studio_Work/job_apps/ashmei.Rmd",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "213,38",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 15,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

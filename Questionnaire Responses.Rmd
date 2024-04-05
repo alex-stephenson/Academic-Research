@@ -1,0 +1,678 @@
+---
+title: "Questionnaire Analysis"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r message = FALSE, echo=FALSE}
+library(tidyverse)
+library(descr)
+library(bbplot)
+library(rpivotTable)
+library(descr)
+library(GGally)
+library(Hmisc)
+library(kableExtra)
+```
+
+
+```{r message = FALSE, echo=FALSE, warning = FALSE}
+data <- read_csv("A. Ledevena Questionnaire v3 - Sheet1.csv", col_names = T)
+colnames(data) <- data[1,]
+data <- data[-1,]
+data$Gender[data$Gender == 'F'] <- 'Female'
+data$Gender[data$Gender == 'M'] <- 'Male'
+
+```
+
+
+```{r message = FALSE, echo=FALSE}
+data_raw <- data
+
+data_raw$`Size of network (people)`[data_raw$`Size of network (people)` == "1000 <"] <- 5
+data_raw$`Size of network (people)`[data_raw$`Size of network (people)` == "500-1000"] <- 4
+data_raw$`Size of network (people)`[data_raw$`Size of network (people)` == "200-500"] <- 3
+data_raw$`Size of network (people)`[data_raw$`Size of network (people)` == "100-300"] <- 2
+data_raw$`Size of network (people)`[data_raw$`Size of network (people)` == "100-200"] <- 2
+data_raw$`Size of network (people)`[data_raw$`Size of network (people)` == "100 >"] <- 1
+data_raw$`Size of network (people)`[data_raw$`Size of network (people)` == "50 >"] <- 1
+
+
+data_raw$`Time spent on network (last week)(hours)`[data_raw$`Time spent on network (last week)(hours)` == "1 >"] <- 1
+data_raw$`Time spent on network (last week)(hours)`[data_raw$`Time spent on network (last week)(hours)` == "1-3"] <- 2
+data_raw$`Time spent on network (last week)(hours)`[data_raw$`Time spent on network (last week)(hours)` == "3-5"] <- 3
+data_raw$`Time spent on network (last week)(hours)`[data_raw$`Time spent on network (last week)(hours)` == "5 <"] <- 4
+
+data_raw$`Money spent on network`[data_raw$`Money spent on network` == "2000 >"] <- 1
+data_raw$`Money spent on network`[data_raw$`Money spent on network` == "2000-5000"] <- 2
+data_raw$`Money spent on network`[data_raw$`Money spent on network` == "5000-10000"] <- 3
+data_raw$`Money spent on network`[data_raw$`Money spent on network` == "10000-20000"] <- 4
+data_raw$`Money spent on network`[data_raw$`Money spent on network` == "20000 <"] <- 5
+
+data_raw$`Position within network`[data_raw$`Position within network` == "Donor"] <- 1
+data_raw$`Position within network`[data_raw$`Position within network` == "More donor"] <- 2
+data_raw$`Position within network`[data_raw$`Position within network` == "50/50"] <- 3
+data_raw$`Position within network`[data_raw$`Position within network` == "More recipient"] <- 4
+data_raw$`Position within network`[data_raw$`Position within network` == "Recipient"] <- 5
+
+data_raw$`Does a network help`[data_raw$`Does a network help` == "A lot"] <- 5
+data_raw$`Does a network help`[data_raw$`Does a network help` == "To some extent"] <- 4
+data_raw$`Does a network help`[data_raw$`Does a network help` == "Hard to say"] <- 3
+data_raw$`Does a network help`[data_raw$`Does a network help` == "Rarely"] <- 2
+data_raw$`Does a network help`[data_raw$`Does a network help` == "Mostly no"] <- 2
+data_raw$`Does a network help`[data_raw$`Does a network help` == "No"] <- 1
+
+data_raw$`Time at work (years)`[data_raw$`Time at work (years)` == "2 >"] <- 1
+data_raw$`Time at work (years)`[data_raw$`Time at work (years)` == "2-5"] <- 2
+data_raw$`Time at work (years)`[data_raw$`Time at work (years)` == "6-10"] <- 3
+data_raw$`Time at work (years)`[data_raw$`Time at work (years)` == "11-20"] <- 4
+data_raw$`Time at work (years)`[data_raw$`Time at work (years)` == "10-20"] <- 4
+data_raw$`Time at work (years)`[data_raw$`Time at work (years)` == "20 <"] <- 5
+
+data_raw$Age[data_raw$Age == "30 >"] <- 1
+data_raw$Age[data_raw$Age == "<30"] <- 1
+data_raw$Age[data_raw$Age == "30-40"] <- 2
+data_raw$Age[data_raw$Age == "41-50"] <- 3
+data_raw$Age[data_raw$Age == "51-60"] <- 4
+data_raw$Age[data_raw$Age == "60 <"] <- 5
+
+data_raw$Location[data_raw$Location == "1"] <- 'Non-Moscow'
+data_raw$Location[data_raw$Location == "2"] <- 'Moscosw'
+
+```
+
+
+
+```{r message = FALSE, echo=FALSE}
+clean_data <- data
+
+#Size of network
+
+clean_data$`Size of network (people)`[clean_data$`Size of network (people)` == "1000 <"] <- 5
+clean_data$`Size of network (people)`[clean_data$`Size of network (people)` == "500-1000"] <- 4
+clean_data$`Size of network (people)`[clean_data$`Size of network (people)` == "200-500"] <- 3
+clean_data$`Size of network (people)`[clean_data$`Size of network (people)` == "100-300"] <- 2
+clean_data$`Size of network (people)`[clean_data$`Size of network (people)` == "100-200"] <- 2
+clean_data$`Size of network (people)`[clean_data$`Size of network (people)` == "100 >"] <- 1
+clean_data$`Size of network (people)`[clean_data$`Size of network (people)` == "50 >"] <- 1
+
+
+clean_data$`Size of network (people)`[clean_data$`Size of network (people)` == "5"] <- 1000
+clean_data$`Size of network (people)`[clean_data$`Size of network (people)` == "4"] <- 750
+clean_data$`Size of network (people)`[clean_data$`Size of network (people)` == "3"] <- 350
+clean_data$`Size of network (people)`[clean_data$`Size of network (people)` == "2"] <- 200
+clean_data$`Size of network (people)`[clean_data$`Size of network (people)` == "2"] <- 200
+clean_data$`Size of network (people)`[clean_data$`Size of network (people)` == "1"] <- 100
+clean_data$`Size of network (people)`[clean_data$`Size of network (people)` == "1"] <- 100
+
+
+#Time / Network
+
+
+clean_data$`Time spent on network (last week)(hours)`[clean_data$`Time spent on network (last week)(hours)` == "1 >"] <- 1
+clean_data$`Time spent on network (last week)(hours)`[clean_data$`Time spent on network (last week)(hours)` == "1-3"] <- 2
+clean_data$`Time spent on network (last week)(hours)`[clean_data$`Time spent on network (last week)(hours)` == "3-5"] <- 3
+clean_data$`Time spent on network (last week)(hours)`[clean_data$`Time spent on network (last week)(hours)` == "5 <"] <- 4
+
+clean_data$`Time spent on network (last week)(hours)`[clean_data$`Time spent on network (last week)(hours)` == "1"] <- 1
+clean_data$`Time spent on network (last week)(hours)`[clean_data$`Time spent on network (last week)(hours)` == "2"] <- 2
+clean_data$`Time spent on network (last week)(hours)`[clean_data$`Time spent on network (last week)(hours)` == "4"] <- 5
+clean_data$`Time spent on network (last week)(hours)`[clean_data$`Time spent on network (last week)(hours)` == 3] <- 4
+
+
+#Money / Network
+
+clean_data$`Money spent on network`[clean_data$`Money spent on network` == "2000 >"] <- 1
+clean_data$`Money spent on network`[clean_data$`Money spent on network` == "2000-5000"] <- 2
+clean_data$`Money spent on network`[clean_data$`Money spent on network` == "5000-10000"] <- 3
+clean_data$`Money spent on network`[clean_data$`Money spent on network` == "10000-20000"] <- 4
+clean_data$`Money spent on network`[clean_data$`Money spent on network` == "20000 <"] <- 5
+
+
+clean_data$`Money spent on network`[clean_data$`Money spent on network` == "1"] <- 2000
+clean_data$`Money spent on network`[clean_data$`Money spent on network` == "2"] <- 3500
+clean_data$`Money spent on network`[clean_data$`Money spent on network` == "3"] <- 7500
+clean_data$`Money spent on network`[clean_data$`Money spent on network` == "4"] <- 15000
+clean_data$`Money spent on network`[clean_data$`Money spent on network` == "5"] <- 20000
+
+
+
+#Position
+
+clean_data$`Position within network`[clean_data$`Position within network` == "Donor"] <- 1
+clean_data$`Position within network`[clean_data$`Position within network` == "More donor"] <- 2
+clean_data$`Position within network`[clean_data$`Position within network` == "50/50"] <- 3
+clean_data$`Position within network`[clean_data$`Position within network` == "More recipient"] <- 4
+clean_data$`Position within network`[clean_data$`Position within network` == "Recipient"] <- 5
+
+
+#Help
+
+clean_data$`Does a network help`[clean_data$`Does a network help` == "A lot"] <- 5
+clean_data$`Does a network help`[clean_data$`Does a network help` == "To some extent"] <- 4
+clean_data$`Does a network help`[clean_data$`Does a network help` == "Hard to say"] <- 3
+clean_data$`Does a network help`[clean_data$`Does a network help` == "Rarely"] <- 2
+clean_data$`Does a network help`[clean_data$`Does a network help` == "Mostly no"] <- 2
+clean_data$`Does a network help`[clean_data$`Does a network help` == "No"] <- 1
+
+#Time / work
+
+clean_data$`Time at work (years)`[clean_data$`Time at work (years)` == "2 >"] <- 1
+clean_data$`Time at work (years)`[clean_data$`Time at work (years)` == "2-5"] <- 2
+clean_data$`Time at work (years)`[clean_data$`Time at work (years)` == "6-10"] <- 3
+clean_data$`Time at work (years)`[clean_data$`Time at work (years)` == "11-20"] <- 4
+clean_data$`Time at work (years)`[clean_data$`Time at work (years)` == "10-20"] <- 4
+clean_data$`Time at work (years)`[clean_data$`Time at work (years)` == "20 <"] <- 5
+
+
+
+clean_data$`Time at work (years)`[clean_data$`Time at work (years)` == "1"] <-1
+clean_data$`Time at work (years)`[clean_data$`Time at work (years)` == "2"] <- 3.5
+clean_data$`Time at work (years)`[clean_data$`Time at work (years)` == "3"] <- 8
+clean_data$`Time at work (years)`[clean_data$`Time at work (years)` == "4"] <- 15
+clean_data$`Time at work (years)`[clean_data$`Time at work (years)` == "4"] <- 15
+clean_data$`Time at work (years)`[clean_data$`Time at work (years)` == "5"] <- 20
+
+#Age
+
+clean_data$Age[clean_data$Age == "30 >"] <- 1
+clean_data$Age[clean_data$Age == "<30"] <- 1
+clean_data$Age[clean_data$Age == "30-40"] <- 2
+clean_data$Age[clean_data$Age == "41-50"] <- 3
+clean_data$Age[clean_data$Age == "51-60"] <- 4
+clean_data$Age[clean_data$Age == "60 <"] <- 5
+
+clean_data$Age[clean_data$Age == "1"] <- 30
+clean_data$Age[clean_data$Age == "2"] <- 35
+clean_data$Age[clean_data$Age == "3"] <- 45
+clean_data$Age[clean_data$Age == "4"] <- 55
+clean_data$Age[clean_data$Age == "5"] <- 65
+
+
+#Location
+
+clean_data$Location[clean_data$Location == "1"] <- 'Non-Moscow'
+clean_data$Location[clean_data$Location == "2"] <-"Moscow"
+
+
+#Job
+
+clean_data$Job[clean_data$Job == "3"] <- "Private"
+clean_data$Job[clean_data$Job == "4"] <- "Own Company"
+
+```
+
+
+
+```{r message = FALSE, echo=FALSE, warning = FALSE}
+data_3 <- read_csv("batch 3 CSV.csv", col_names = T) %>% 
+  select(1:18)
+
+colnames(data_3) <- data_3[1,]
+data_3 <- data_3[-1,]
+
+```
+
+```{r message = FALSE, echo=FALSE, warning = FALSE}
+
+data_3$`What is a network`[data_3$`What is a network` == "1. Узлы и соединения между ними (технический принцип) / Nods and ties between them (technical construct)"] <- 1
+
+data_3$`What is a network`[data_3$`What is a network` == "2. «Друзья» в социальных сетях (социальный принцип) / Friends on social media (social construct)"] <- 2
+data_3$`What is a network`[data_3$`What is a network` == "3. Мои личные контакты (биографический принцип) / My personal contacts (biographical construct)"] <- 3
+data_3$`What is a network`[data_3$`What is a network` == "4. Люди, к которым я могу обратиться за помощью (принцип доверия) / People I can reach out for a favour (trust construct)"] <- 4
+data_3$`What is a network`[data_3$`What is a network` == "5. Моя семья и друзья семьи / My family and family friends"] <- 5
+
+```
+
+
+
+```{r message = FALSE, echo=FALSE, warning = FALSE}
+
+data_3$`Size of network (people)`[data_3$`Size of network (people)` == "1. Менее 50 человек / Less than 50 people"] <- 100
+
+data_3$`Size of network (people)`[data_3$`Size of network (people)` == "2. от 50 до 100 человек / 50 to 100 people"] <- 100
+
+data_3$`Size of network (people)`[data_3$`Size of network (people)` == "3. от 100 до 200 человек / 100 to 200 people"] <- 200
+
+data_3$`Size of network (people)`[data_3$`Size of network (people)` == "4. от 200 до 500 человек / 200 to 500 people"] <- 350
+
+data_3$`Size of network (people)`[data_3$`Size of network (people)` == "5. от 500 до 1000 человек / 500 to 1,000 people"] <- 750
+
+data_3$`Size of network (people)`[data_3$`Size of network (people)` == "6. Более 1000 человек / More than 1,000 people"] <- 1000
+
+```
+
+
+```{r message = FALSE, echo=FALSE, warning = FALSE}
+data_3$`Time spent on network (last week)(hours)`[data_3$`Time spent on network (last week)(hours)` == "1. Менее 1 часа в день / Less than one hour a day"] <- 1
+
+data_3$`Time spent on network (last week)(hours)`[data_3$`Time spent on network (last week)(hours)` == "2. От 1 до 3 часов в день / From one to three hours a day"] <- 2
+
+data_3$`Time spent on network (last week)(hours)`[data_3$`Time spent on network (last week)(hours)` == "3. От 3 до 5 часов в день / From three to five hours a day"] <- 4
+
+data_3$`Time spent on network (last week)(hours)`[data_3$`Time spent on network (last week)(hours)` == "4. Более 5 часов в день / More than five hours a day"] <- 5
+
+data_3$`Time spent on network (last week)(hours)`[data_3$`Time spent on network (last week)(hours)` == "5. Все мое время так или иначе идет на поддержание моей сети / I spend all my time on supporting my network"] <- 10
+
+```
+
+
+```{r message = FALSE, echo=FALSE, warning = FALSE}
+
+data_3$`Money spent on network`[data_3$`Money spent on network` == "1. Менее 2 000 рублей в неделю / Less than 200 dollars per week"] <- 2000
+
+data_3$`Money spent on network`[data_3$`Money spent on network` == "2. От 2 000 до 5 000 рублей в неделю / From 200 to 500 dollars per week"] <- 3500
+
+data_3$`Money spent on network`[data_3$`Money spent on network` == "3. От 5 000 до 10 000 рублей в неделю / From 500 to 1000 dollars per week"] <- 7500
+
+data_3$`Money spent on network`[data_3$`Money spent on network` == "4. От 10 000 до 20 000 рублей в неделю / From 1000 to 2000 dollars per week"] <- 15000
+
+data_3$`Money spent on network`[data_3$`Money spent on network` == "5. Более 20 000 рублей в неделю / More than 2000 dollars per week"] <- 20000
+
+```
+
+
+```{r message = FALSE, echo=FALSE, warning = FALSE}
+
+data_3$`Position within network`[data_3$`Position within network` == "1. Однозначно донор / Donor"] <- 1
+
+data_3$`Position within network`[data_3$`Position within network` == "2. Скорее донор / More of a donor"] <- 2
+
+data_3$`Position within network`[data_3$`Position within network` == "3. 50/50"] <- 3
+
+data_3$`Position within network`[data_3$`Position within network` == "4. Скорее реципиент / More of a recipient"] <- 4
+
+data_3$`Position within network`[data_3$`Position within network` == "5. Однозначно реципиент / Recipient"] <- 5
+
+
+```
+
+
+```{r message = FALSE, echo=FALSE, warning = FALSE}
+data_3$`Does a network help`[data_3$`Does a network help` == "1. Очень помогает / Very much"] <- 5
+data_3$`Does a network help`[data_3$`Does a network help` == "2. В какой то степени помогает / Somewhat"] <- 4
+data_3$`Does a network help`[data_3$`Does a network help` == "3. Бывает, что помогает, но и мешает тоже / Occasionally"] <- 3
+data_3$`Does a network help`[data_3$`Does a network help` == "4. В основном мешает / Not really"] <- 2
+data_3$`Does a network help`[data_3$`Does a network help` == "5. Не помогает вообще / Absolutely not"] <- 1
+
+```
+
+
+
+```{r}
+
+```
+
+
+```{r message = FALSE, echo=FALSE, warning = FALSE}
+data_3$`Job (private / public)`[data_3$`Job (private / public)` == "3. В частной компании / Private company"] <- "Private"
+data_3$`Job (private / public)`[data_3$`Job (private / public)` == "5. Другое (укажите в следующем вопросе) / Different (please give example in next question)"] <- "Other"
+data_3$`Job (private / public)`[data_3$`Job (private / public)` == "1. В органах государственной власти / State authority"] <- "Government"
+```
+
+
+> Variable Job (Company) hasn't been coded yet
+
+```{r message = FALSE, echo=FALSE, warning = FALSE}
+data_3$`Time at work (years)`[data_3$`Time at work (years)` == "1. Менее 2 лет / Less 2 years"] <- 1
+data_3$`Time at work (years)`[data_3$`Time at work (years)` == "2. От 2 до 5 лет / From 2 to 5 years"] <- 3.5
+data_3$`Time at work (years)`[data_3$`Time at work (years)` == "3. От 6 до 10 лет / From 6 to 10 years"] <- 8
+data_3$`Time at work (years)`[data_3$`Time at work (years)` == "4. От 11 до 20 лет / From 11 to 20 years"] <- 15
+data_3$`Time at work (years)`[data_3$`Time at work (years)` == "5. Более 20 лет / More than 20 years"] <- 20
+
+```
+
+
+```{r message = FALSE, echo=FALSE, warning = FALSE}
+
+data_3$Age[data_3$Age == "2. 30-40"] <- 35
+data_3$Age[data_3$Age == "3. 41-50"] <- 45
+data_3$Age[data_3$Age == "4. 51-60"] <- 55
+data_3$Age[data_3$Age == "5. >60"] <- 60
+
+```
+
+
+
+```{r message = FALSE, echo=FALSE, warning = FALSE}
+data_3$Gender[data_3$Gender == '2. женский / Female'] <- 'Female'
+data_3$Gender[data_3$Gender == '1. мужской / Male'] <- 'Male'
+
+```
+
+
+```{r message = FALSE, echo=FALSE, warning = FALSE}
+#when they have put multiple cities i've assumed the value of the first
+
+data_3$Location[data_3$Location == "Москва"] <- 'Moscow'
+data_3$Location[data_3$Location == "Мск"] <- 'Moscow'
+data_3$Location[data_3$Location == "Москве"] <- 'Moscow'
+data_3$Location[data_3$Location == "Москва, Липецк"] <- 'Moscow'
+data_3$Location[data_3$Location == "Москва-Липецк"] <- 'Moscow'
+
+
+data_3$Location[data_3$Location == "РФ"] <- 'Russia'
+data_3$Location[data_3$Location == "Россия"] <- 'Russia'
+data_3$Location[data_3$Location == "Европа Росси"] <- 'Russia'
+data_3$Location[data_3$Location == "Россия/ Russia"] <- 'Russia'
+data_3$Location[data_3$Location == "РОссия"] <- 'Russia'
+data_3$Location[data_3$Location == "Рф"] <- 'Russia'
+
+data_3$Location[data_3$Location == "Russia"] <- 'Non-Moscow'
+
+
+data_3$Location[data_3$Location == "TURKEY"] <- 'Europe'
+data_3$Location[data_3$Location == "Europe-italy"] <- 'Europe'
+data_3$Location[data_3$Location == "Европа"] <- 'Europe'
+data_3$Location[data_3$Location == "Belgium"] <- 'Europe'
+
+data_3$Location[data_3$Location == "Европа"] <- 'Europe'
+
+
+data_3$Location[data_3$Location == "Metalprocessing"] <- NA
+```
+
+##Data 4
+
+
+```{r  message = FALSE, echo=FALSE, warning = FALSE}
+data_4 <- read_csv('data_4.csv', col_names = TRUE)
+data_4_2 <- read_csv('data_4_2.csv', col_names = TRUE)
+
+
+```
+
+
+---
+title: "Untitled"
+output: html_document
+---
+
+
+```{r}
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+
+data_4_2$`Size of network (people)`[data_4_2$`Size of network (people)` == "1000 <"] <- 5
+data_4_2$`Size of network (people)`[data_4_2$`Size of network (people)` == "500-1000"] <- 4
+data_4_2$`Size of network (people)`[data_4_2$`Size of network (people)` == "200-500"] <- 3
+data_4_2$`Size of network (people)`[data_4_2$`Size of network (people)` == "100-300"] <- 2
+data_4_2$`Size of network (people)`[data_4_2$`Size of network (people)` == "100-200"] <- 2
+data_4_2$`Size of network (people)`[data_4_2$`Size of network (people)` == "100 >"] <- 1
+data_4_2$`Size of network (people)`[data_4_2$`Size of network (people)` == "50 >"] <- 1
+
+
+data_4_2$`Size of network (people)`[data_4_2$`Size of network (people)` == "5"] <- 1000
+data_4_2$`Size of network (people)`[data_4_2$`Size of network (people)` == "4"] <- 750
+data_4_2$`Size of network (people)`[data_4_2$`Size of network (people)` == "3"] <- 350
+data_4_2$`Size of network (people)`[data_4_2$`Size of network (people)` == "2"] <- 200
+data_4_2$`Size of network (people)`[data_4_2$`Size of network (people)` == "2"] <- 200
+data_4_2$`Size of network (people)`[data_4_2$`Size of network (people)` == "1"] <- 100
+data_4_2$`Size of network (people)`[data_4_2$`Size of network (people)` == "1"] <- 100
+
+
+#Time / Network
+
+
+data_4_2$`Time spent on network (last week)(hours)`[data_4_2$`Time spent on network (last week)(hours)` == "1 >"] <- 1
+data_4_2$`Time spent on network (last week)(hours)`[data_4_2$`Time spent on network (last week)(hours)` == "1-3"] <- 2
+data_4_2$`Time spent on network (last week)(hours)`[data_4_2$`Time spent on network (last week)(hours)` == "3-5"] <- 3
+data_4_2$`Time spent on network (last week)(hours)`[data_4_2$`Time spent on network (last week)(hours)` == "5 <"] <- 4
+
+data_4_2$`Time spent on network (last week)(hours)`[data_4_2$`Time spent on network (last week)(hours)` == "1"] <- 1
+data_4_2$`Time spent on network (last week)(hours)`[data_4_2$`Time spent on network (last week)(hours)` == "2"] <- 2
+data_4_2$`Time spent on network (last week)(hours)`[data_4_2$`Time spent on network (last week)(hours)` == "4"] <- 5
+data_4_2$`Time spent on network (last week)(hours)`[data_4_2$`Time spent on network (last week)(hours)` == 3] <- 4
+
+
+#Money / Network
+
+data_4_2$`Money spent on network`[data_4_2$`Money spent on network` == "2000 >"] <- 1
+data_4_2$`Money spent on network`[data_4_2$`Money spent on network` == "2000-5000"] <- 2
+data_4_2$`Money spent on network`[data_4_2$`Money spent on network` == "5000-10000"] <- 3
+data_4_2$`Money spent on network`[data_4_2$`Money spent on network` == "10000-20000"] <- 4
+data_4_2$`Money spent on network`[data_4_2$`Money spent on network` == "20000 <"] <- 5
+
+
+data_4_2$`Money spent on network`[data_4_2$`Money spent on network` == "1"] <- 2000
+data_4_2$`Money spent on network`[data_4_2$`Money spent on network` == "2"] <- 3500
+data_4_2$`Money spent on network`[data_4_2$`Money spent on network` == "3"] <- 7500
+data_4_2$`Money spent on network`[data_4_2$`Money spent on network` == "4"] <- 15000
+data_4_2$`Money spent on network`[data_4_2$`Money spent on network` == "5"] <- 20000
+
+
+
+#Position
+
+data_4_2$`Position within network`[data_4_2$`Position within network` == "Donor"] <- 1
+data_4_2$`Position within network`[data_4_2$`Position within network` == "More donor"] <- 2
+data_4_2$`Position within network`[data_4_2$`Position within network` == "50/50"] <- 3
+data_4_2$`Position within network`[data_4_2$`Position within network` == "More recipient"] <- 4
+data_4_2$`Position within network`[data_4_2$`Position within network` == "Recipient"] <- 5
+
+
+#Help
+
+data_4_2$`Does a network help`[data_4_2$`Does a network help` == "A lot"] <- 5
+data_4_2$`Does a network help`[data_4_2$`Does a network help` == "To some extent"] <- 4
+data_4_2$`Does a network help`[data_4_2$`Does a network help` == "Hard to say"] <- 3
+data_4_2$`Does a network help`[data_4_2$`Does a network help` == "Rarely"] <- 2
+data_4_2$`Does a network help`[data_4_2$`Does a network help` == "Mostly no"] <- 2
+data_4_2$`Does a network help`[data_4_2$`Does a network help` == "No"] <- 1
+
+#Time / work
+
+data_4_2$`Time at work (years)`[data_4_2$`Time at work (years)` == "2 >"] <- 1
+data_4_2$`Time at work (years)`[data_4_2$`Time at work (years)` == "2-5"] <- 2
+data_4_2$`Time at work (years)`[data_4_2$`Time at work (years)` == "6-10"] <- 3
+data_4_2$`Time at work (years)`[data_4_2$`Time at work (years)` == "11-20"] <- 4
+data_4_2$`Time at work (years)`[data_4_2$`Time at work (years)` == "10-20"] <- 4
+data_4_2$`Time at work (years)`[data_4_2$`Time at work (years)` == "20 <"] <- 5
+
+
+
+data_4_2$`Time at work (years)`[data_4_2$`Time at work (years)` == "1"] <-1
+data_4_2$`Time at work (years)`[data_4_2$`Time at work (years)` == "2"] <- 3.5
+data_4_2$`Time at work (years)`[data_4_2$`Time at work (years)` == "3"] <- 8
+data_4_2$`Time at work (years)`[data_4_2$`Time at work (years)` == "4"] <- 15
+data_4_2$`Time at work (years)`[data_4_2$`Time at work (years)` == "4"] <- 15
+data_4_2$`Time at work (years)`[data_4_2$`Time at work (years)` == "5"] <- 20
+
+#Age
+
+data_4_2$Age[data_4_2$Age == "30 >"] <- 1
+data_4_2$Age[data_4_2$Age == "<30"] <- 1
+data_4_2$Age[data_4_2$Age == "30-40"] <- 2
+data_4_2$Age[data_4_2$Age == "41-50"] <- 3
+data_4_2$Age[data_4_2$Age == "51-60"] <- 4
+data_4_2$Age[data_4_2$Age == "60 <"] <- 5
+
+data_4_2$Age[data_4_2$Age == "1"] <- 30
+data_4_2$Age[data_4_2$Age == "2"] <- 35
+data_4_2$Age[data_4_2$Age == "3"] <- 45
+data_4_2$Age[data_4_2$Age == "4"] <- 55
+data_4_2$Age[data_4_2$Age == "5"] <- 65
+
+
+data_4_2$Gender[data_4_2$Gender == "1"] <- 'Male'
+data_4_2$Gender[data_4_2$Gender == "2"] <- 'Female'
+
+
+
+#Location
+
+data_4_2$Location[data_4_2$Location == "1"] <- 'Non-Moscow'
+data_4_2$Location[data_4_2$Location == "2"] <-"Moscow"
+
+
+#Job
+
+data_4_2$`Job (Company)`[data_4_2$`Job (Company)` == "3"] <- "Private"
+data_4_2$Batch <- 4
+
+```
+
+
+
+```
+
+
+```{r  message = FALSE, echo=FALSE, warning = FALSE}
+
+
+data_4_2 <- data_4_2 %>% 
+  rename("Job (private / public)" = Job)
+  
+
+data_4_2 <- data_4_2 %>%
+  select(-batch)
+
+data_4_2 <- data_4_2 %>% 
+  mutate(Number = row_number())
+
+clean_data <- clean_data %>% 
+  mutate(`How does your network help you to perform professionally` = NA,
+         `Job (Company)` = NA,
+         `Numerical : How does your network help you to perform professionally`= NA)
+
+clean_data <- clean_data %>% 
+  rename("Job (private / public)" = Job)
+
+
+
+data_complete <- rbind(clean_data, data_3)
+
+data_complete <- data_complete %>% 
+  rename("Job (private / public)" = Job)
+
+data_complete <- data_complete %>% 
+  mutate(`12. В каком подразделении бизнеса вы работаете?  [v2] - Ответ` = NA,
+         `13. В какой должности вы работаете` = NA)
+
+
+data_complete <- rbind(data_complete, data_4_2)
+
+
+```
+
+
+
+
+
+### Summary Statistics (for numerical variables)
+
+```{r message = FALSE, echo=FALSE, warning = FALSE}
+summary_data <- data_complete %>% 
+  mutate(`What is a network` = as.factor(`What is a network`),
+        `Size of network (people)` = as.numeric(`Size of network (people)`),
+        `Time spent on network (last week)(hours)` = as.numeric(`Time spent on network (last week)(hours)`),
+        `Money spent on network` = as.numeric(`Money spent on network`),
+        `Position within network` = as.factor(`Position within network`),
+        `Does a network help` = as.factor(`Does a network help`),
+        `Job (private / public)` = as.factor(`Job (private / public)`),
+        Age = as.numeric(Age),
+        Gender = as.factor(Gender),
+        Location = as.factor(Location),
+        Seniority = as.numeric(Seniority),
+        Sector = as.factor(Sector),
+        `How does your network help you to perform professionally` = as.factor(`How does your network help you to perform professionally`),
+        `Job (Company)` = as.factor(`Job (Company)`),
+        `Time at work (years)` = as.numeric(`Time at work (years)`),
+        `Numerical : How does your network help you to perform professionally` = as.numeric(`Numerical : How does your network help you to perform professionally`))
+
+summary_data %>% 
+  select(`Size of network (people)`, 
+         `Time at work (years)`, 
+         `Time spent on network (last week)(hours)`, 
+         Age,
+         `Money spent on network`,
+         `Numerical : How does your network help you to perform professionally`) %>% 
+  summary(.) %>%
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+  row_spec(1:5, background = "White")
+
+```
+
+
+
+### Correlations (for numerical variables)
+
+```{r message = FALSE, echo=FALSE, warning = FALSE}
+corr_df <- data_complete %>% 
+  select(`Size of network (people)`, 
+         `Time at work (years)`, 
+         `Time spent on network (last week)(hours)`, 
+         Age,
+         `Money spent on network`,
+         `Numerical : How does your network help you to perform professionally`) %>% 
+  mutate_all(~as.numeric(.)) %>% 
+  na.omit()
+
+
+
+corr_data <- cor(corr_df)
+
+corr_data <- round(corr_data, 3)
+corr_data %>% 
+  kable()  %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+  row_spec(1:5, background = "White")
+```
+
+
+
+## Pivot table
+
+
+
+```{r message = FALSE, echo=FALSE, fig.height= 14}
+rpivotTable(data = data_complete, 
+            rows = "`What is a network`", 
+            cols = "filtered_data$Gender", 
+            aggregatorName = "Count",
+            vals = "Freq",
+            rendererName = "Table"
+)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

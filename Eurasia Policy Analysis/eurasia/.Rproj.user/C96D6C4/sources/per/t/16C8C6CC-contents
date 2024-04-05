@@ -1,0 +1,1060 @@
+---
+title: "Portfolio"
+author: "Alex Stephenson, Anna Gorobtsova, Elizaveta Dyachenko, Marina Romanova"
+date: '25/05/2019'
+output:
+  rmdformats::html_clean:
+    highlight: kate
+    code_folding: "hide"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warnings = FALSE)
+```  
+
+> Throughout the document if you would like to see the specific piece of code that created this output press the 'code' button to the right. Alternatively, if you would like to see all the code select 'show all code' from the 'code' dropdown menu in the top right hand corner of the document. 
+
+#PROJECT SUMMARY
+
+```{r error = FALSE, message = FALSE, warnings = FALSE}  
+
+library(ggplot2)
+library(dplyr)
+library(foreign)
+library(knitr)
+library(data.table)
+library(rlang)
+library(gridExtra)
+library(qwraps2)
+library(psych)
+library(magrittr)
+library(rmarkdown)
+library(gapminder)
+library(corrplot)
+library(moments)
+library(sjPlot)
+library(car)
+library(DescTools)
+library(readr)
+library(scales)
+library(kableExtra)
+library(tidyverse)
+library(sjlabelled)  
+library(lubridate)
+library(GGally)
+library(moderndive)
+library(stargazer)
+library(broom)
+library(rmdformats)
+library(networkD3)
+library(ggExtra)
+library(broom)
+library(statisticalModeling)
+```   
+
+Let us begin our report with an overall description of the country that we chose - Slovenia. Slovenia, or Republic of Slovenia, is located in the South of Central Europe and sorrounded by  by Italy to the west, Austria to the north, Hungary to the northeast, Croatia to the southeast, and the Adriatic Sea to the southwest. The capital of Slovenia is Ljubljana. The population estimate is nearly 2 million people, human development index is 0.896 which is very high number. Ethnic groups are 83% Slovenes (83%), Serbs (2%), Croats (1.8%), Bosnians (1%) and others (12%). The unemplyment rate is law - about 4%, the Gini coeficient (it marks the how equal the disctribution of income in the country is) is also law and stands at 24.4  
+
+The topic that we chose to research in Slovenia is Health. The Slovenian healthcare system is paid through a mandatory insurance program called the Health Insurance Institute of Slovenia, that is paid by employers and employees. However, not all medical costs are covered from this insurance, with the exception of children's healthcare which is fully covered. Almost all Slovenes thus pay voluntary insurance fees for additional coverage that also help support the system. The National Health Insurance Institute oversees all healthcare services. It is a right for all citizens to have equal access to healthcare, so long as they are Slovenian citizens or registered long-term residents.In 2015, 8.10% of the gross domestic product went to healthcare expenditures. 
+
+In our project, we want to look at different health issues in Slovenia, specifically 
+
+```{r}
+
+links=data.frame(source=c("Health in Slovenia", "Health in Slovenia", "Health in Slovenia", "Health in Slovenia",
+                          "PART 1 - Introduction", "PART 1 - Introduction", 
+                          "PART 2 - The association between gender, work & smoking", "PART 2 - The association between gender, work & smoking",
+                          "PART 3 - Difference in weights & marital statuses", "PART 3 - Difference in weights & marital statuses", "PART 3 - Difference in weights & marital statuses", 
+                          "PART 4 - The relationship between alcohol & gender", "PART 4 - The relationship between alcohol & gender"), 
+                 target=c("PART 1 - Introduction","PART 2 - The association between gender, work & smoking", "PART 3 - Difference in weights & marital statuses", "PART 4 - The relationship between alcohol & gender", 
+                          "Graphs", "Variable Descriptions", 
+                          "Chi Squared", "T-Test", "ANOVA", 
+                          "F-Test", "Residuals", 
+                          "Linear Regression", "Predictions"), 
+                 value=c(3 , 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 2, 2))
+
+nodes=data.frame(name=c(as.character(links$source), as.character(links$target)) %>% unique())
+
+links$IDsource=match(links$source, nodes$name)-1 
+links$IDtarget=match(links$target, nodes$name)-1
+
+sankeyNetwork(Links = links, Nodes = nodes,
+              Source = "IDsource", Target = "IDtarget",
+              Value = "value", NodeID = "name", 
+              sinksRight=FALSE, fontSize = 10, fontFamily = "bold")
+```
+
+
+#PART 1 - Introduction  
+
+##Variables 
+
+In the table below you can find all the variables we were working with in all 4 parts of our project. 
+
+```{r} 
+v0 <- as.data.frame(cbind("agea:", "Age"))
+v1 <- as.data.frame(cbind("alcwkdy:", "Grams of  alcohol, last time drinking on a weekday, Monday to Thursday"))
+v2 <- as.data.frame(cbind("alcwknd:", "Grams of alcohol, last time drinking on a weekend day, Friday to Sunday "))
+v3 <- as.data.frame(cbind("cgtsday:", "How many cigarettes smoke on typical day"))
+v4 <- as.data.frame(cbind("gndr:", "Gender"))
+v5 <- as.data.frame(cbind("hlpfmhr:", "Amount of time helping others (hours)"))
+v6 <- as.data.frame(cbind("jbexebs:", "In any job, ever exposed to: breathing in smoke, fumes, powder, dust"))
+v7 <- as.data.frame(cbind("maritalb:", "Legal marital status"))
+v8 <- as.data.frame(cbind("mnactic:", "Main activity"))
+v9 <- as.data.frame(cbind("weight:", "Weight of respondent (kg)"))
+
+Vs <- as.data.frame(rbind(v0, v1, v2, v3, v4, v5, v6, v7, v8, v9))
+colnames(Vs) <- c(" ", " ")
+
+Vs %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+  row_spec(1:10, background = "White")
+```  
+
+##Individual Contribution for Part 1
+
+```{r}  
+m0 <- as.data.frame(cbind("Together", "We chose variables together and helped each other with appearing problems."))
+m1 <- as.data.frame(cbind("Alex Stephenson", "Alex made graphs on relationship between drinking and smoking, constructed summary table, and was responsible for the design."))
+m2 <- as.data.frame(cbind("Anna Gorobtsova", "Anna made graphs on activity."))
+m3 <- as.data.frame(cbind("Elizaveta Dyachenko", "Elizaveta did first three graphs on smoking, drinking, and helping others."))
+m4 <- as.data.frame(cbind("Marina Romanova", "Marina did the part with depression and recorded the data."))
+IC <- as.data.frame(rbind(m0, m1, m2, m3, m4))
+colnames(IC) <- c("Name", "Contribution")
+
+IC %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+  row_spec(1:5, background = "White")
+``` 
+
+##Our Data {.tabset .tabset-fade .tabset-pills}
+
+###Importing the Data  
+
+```{r warning=FALSE, error=FALSE, message=FALSE} 
+ESS <- read.spss("ESS7SI.sav", use.value.labels = T, to.data.frame = T)   
+
+data1 <- select(ESS, cgtsday, mnactic, fltdpr, alcwknd, gndr, agea, hlpfmhr)
+data1 <- na.omit(data1)
+
+str(data1)
+data1$alcwknd <- as.numeric(as.character(data1$alcwknd))
+data1$cgtsday <- as.numeric(as.character(data1$cgtsday))
+data1$agea <- as.numeric(as.character(data1$agea))
+```
+
+###Recoding the Data
+
+Let's recode the hours helping others variable (hlpfmhr) so the variable observations correspond to the amount of hours.
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+data1$mnactic <- recode(data1$mnactic, "Housework, looking after children, others" == "Housework")
+
+data1$hlpfmhr <- recode(data1$hlpfmhr, "1" == "1-10")
+data1$hlpfmhr <- recode(data1$hlpfmhr, "2" == "11-20")
+data1$hlpfmhr <- recode(data1$hlpfmhr, "3" == "21-30")
+data1$hlpfmhr <- recode(data1$hlpfmhr, "4" == "31-40")
+data1$hlpfmhr <- recode(data1$hlpfmhr, "5" == "41-50")
+data1$hlpfmhr <- recode(data1$hlpfmhr, "6" == "55+")
+data1$hlpfmhr <- recode(data1$hlpfmhr, "55" == "<1")
+data1$hlpfmhr <- recode(data1$hlpfmhr, "hours a week" == "")
+data1$hlpfmhr <- recode(data1$hlpfmhr, "hour a week" == "")
+```
+
+##Data Visualisation 
+
+###Helping Others
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+ggplot(data1, aes(x = hlpfmhr)) +
+  geom_bar(col = "navy", fill = "cornflowerblue") +
+  xlab("Hours per week helping others") + 
+  ggtitle("Total amount of time spent helping others per week") +
+  theme(axis.text.x=element_text(angle = 90, vjust = 0.5))
+```
+
+###Drinking Habits  
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+ggplot(data1, aes(x = alcwknd)) +
+  geom_histogram(binwidth = 5, col = "navy", fill = "cornflowerblue") +
+  ggtitle("Drinking habits in Slovenia") + 
+  xlab("Grams of alcohol drunk last weekend")
+```
+
+###Smoking Habits
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+ggplot(data1, aes(x = cgtsday)) +
+  geom_histogram(binwidth = 5, col = "navy", fill = "cornflowerblue") +
+  ggtitle("Smoking habits in Slovenia") + 
+  xlab("Cigarettes smoked a day")
+
+```
+
+###The Relationship Between Drinking & Smoking
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+g10 <- ggplot(data1, aes(x = cgtsday, y = alcwknd)) +
+  geom_point() + 
+  xlab("Cigarettes per day") + 
+  ylab("Grams of alcohol drunk at the weekend") + 
+  ggtitle("The relationship between alcohol consumption and smoking")
+
+ggMarginal(g10, type = "histogram", col = "cornflowerblue")
+```
+
+Let's make the same graph but add some jittered points (to reveal any overlapping points) and add gender as a colour aesthetic. 
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+g11 <- ggplot(data1, aes(x = cgtsday, y = alcwknd)) +
+  geom_point(aes(col = data1$gndr)) +
+  geom_jitter(aes(col = data1$gndr)) +
+  xlab("Cigarettes per day") + ylab("Grams of alcohol drunk at the weekend") + ggtitle("The relationship between alcohol consumption and smoking")
+
+ggMarginal(g11, type = "boxplot", col = "cornflowerblue")
+```
+
+From a visual inspection we can see that women are more likely to drink less. However, it is not clear whether there is a relationship between gender and number of cigarettes smoked. We will use a t test in a later project to better understand whether this relationship is statistically significant. 
+
+###Slovenes' Activities
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+ggplot(data1, aes(x = mnactic)) +
+  geom_bar(col = "navy", fill = "cornflowerblue") +
+  theme(axis.text.x=element_text(angle = 90, vjust = 0.5)) +
+  ggtitle("Main activities in the past 7 Days") +
+  xlab("Activity") 
+
+```
+
+And how are these activities distributed by gender?
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+ggplot(data1, aes(x = mnactic, fill = gndr)) +
+  geom_bar(position = "fill") +
+  theme(axis.text.x=element_text(angle = 90, vjust = 0.5)) +
+  ggtitle("Breakdown of activity by gender") + xlab("Activity") + ylab("Proportion")
+```
+
+How does age influence the main activity?
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+data1 %>%
+  mutate(activity = fct_reorder(mnactic, agea)) %>%
+  ggplot( aes(x = reorder(activity, agea), y = agea)) +
+  geom_boxplot(fill= "cornflowerblue") +
+  theme(axis.text.x=element_text(angle = 90, vjust = 0.5)) +
+  ggtitle("Age by activity") + 
+  xlab("Activity") + 
+  ylab("Age")
+  
+```
+
+###The Relationship Between Gender and Depression
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+ggplot(data1, aes(x = fltdpr, fill = gndr)) +
+  geom_bar(position = "fill") +
+  xlab("Felt Depressed") + ggtitle("How often felt depressed by gender") +
+  theme(axis.text.x=element_text(angle = 90, vjust = 0.5))
+```  
+
+##Summary
+
+To get a better understanding of the data we've explored here let's make a summary table of some of the variables we'll be looking at throughout the project.
+
+```{r warning=FALSE, error=FALSE, message=FALSE, results = "asis"}
+getmode <- function(v) {
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+
+time_mode <- getmode(data1$hlpfmhr)
+
+dpr_mode <- getmode(data1$fltdpr)
+
+act_mode <- getmode(data1$mnactic)
+
+set.seed(42)
+options(qwraps2_markup = "markdown")
+our_summary <-
+  list("Alcohol drunk at the weekend" = 
+         list("variable" =~ c("interval"),
+              "min" = ~ min(data1$alcwknd),
+              "median" = ~ median(data1$alcwknd),
+              "max" = ~ max(data1$alcwknd),
+              "mean (sd)" = ~ qwraps2::mean_sd(data1$cgtsday)),
+       "Cigarettes smoked" =
+         list("variable" =~ c("interval"),
+              "min" = ~ min(data1$cgtsday),
+              "median" = ~ median(data1$cgtsday),
+              "max" = ~ max(data1$cgtsday),
+              "mean (sd)" = ~ qwraps2::mean_sd(data1$cgtsday)),
+       "Age" = 
+         list("variable" =~ c("Interval"),
+              "min" = ~ min(data1$agea),
+              "median" = ~ median(data1$agea),
+              "max" = ~ max(data1$agea),
+              "mean (sd)" = ~ qwraps2::mean_sd(data1$agea)),
+       "Time helping others" =
+         list("variable" =~ c("Ratio"),
+              "mode" =~ time_mode),
+        "Felt Depressed" =
+         list("variable" =~ c("Ordinal"),
+              "mode" =~ dpr_mode),
+       "Main Activity" =
+         list("variable" =~ c("Categorical"),
+              "mode" =~ act_mode))
+                        
+
+tab <- summary_table(data1, our_summary)
+print(tab, rtitle = "Summary Statistics")
+```
+
+
+#PART 2 - The association between gender, work & smoking
+
+##Individual Contribution  
+
+```{r}
+mm0 <- as.data.frame(cbind("Together", "We chose variables and formulated the hypotheses and conclusions. Also, we were dealing with different problems in different parts of our analysis together."))
+mm1 <- as.data.frame(cbind("Alex Stephenson", "In T-test, Alex created a histogram and run both the T-test and non-parametric test."))
+mm2 <- as.data.frame(cbind("Anna Gorobtsova", "In Chi-squared test, Anna created a barplot, contingency table, and run the test."))
+mm3 <- as.data.frame(cbind("Elizaveta Dyachenko", "In Chi-Squared test, Elizaveta added more text and analyzed the residuals."))
+mm4 <- as.data.frame(cbind("Marina Romanova", "In T-test, Marina created a boxplot, and checked the normality with Q-Q plot."))
+IIC <- as.data.frame(rbind(mm0, mm1, mm2, mm3, mm4))
+colnames(IIC) <- c("Name", "Contribution")
+
+IIC %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+  row_spec(1:5, background = "White")
+```
+
+##Data Preparation  
+
+We inspect the data, change its type where needed, and remove outliers. 
+
+```{r warning=FALSE, error=FALSE, message=FALSE}  
+data2 <- select(ESS, c("gndr", "jbexebs", "cgtsday"))
+data2 <- na.omit(data2)
+str(data2)  
+data2$cgtsday <- as.numeric(as.character(data2$cgtsday))
+```  
+
+##Chi-Squared Test {.tabset .tabset-fade .tabset-pills}
+
+###Hypotheses
+
+```{r}  
+h0 <- as.data.frame(cbind("H0:", "Gender and being exposed to breathing smoke in a job are independent variables."))
+h1 <- as.data.frame(cbind("H1:", "Gender and being exposed to breathing smoke in a job are not independent variables."))
+Hs <- as.data.frame(rbind(h0, h1))
+colnames(Hs) <- c(" ", " ")
+
+Hs %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+  row_spec(1:2, background = "White")
+``` 
+
+###Checking Assumptions
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+sjp.xtab(data2$jbexebs, data2$gndr, bar.pos = "stack", geom.colors = c("skyblue", "salmon", "greenyellow"), 
+         title = "Being exposed to breathing smoke in a job distributed by gender", axis.titles = "Exposure to breathing smoke in a job", 
+         legend.title = "Gender", axis.labels = c("Not exposed", "Exposed"), show.total = FALSE, margin = "row")
+```
+
+*From the barplot it can be seen that there are much less people in Slovenia who are exposed to breathing smoke in a job. Nevertheless, there are more men than women among them.*  
+
+We build contingency table and check the assumptions.  
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+cont_table <- table(data2$gndr, data2$jbexebs, dnn = c("Gender", "Exposed to breathing smoke in a job"))
+cont_table
+```
+
+From the contingency table it is seen that we met the assumptions of Chi-squared test:
+
+* There are no empty cells.  
+* Less than 20% of observations are 5 or less.  
+
+###Test & Residuals
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+test <- chisq.test(cont_table)  
+test
+```
+
+*The X-squared(1) = 70.206 and with p-value < 2.2e-16 we can claim that there is a statistically significant association between breathing smoke in a job and gender.* 
+
+We analyze the residuals.  
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+test$stdres
+corrplot(test$stdres, is.cor = FALSE)
+```  
+
+*Positive residuals (blue cells) show a positive association between the gender and being exposed to breathing smoke in a job, while negative residuals (red cells) show a negative association. It means that males are positively associated with being exposed to breathing smoke in a job and females are positively associated with not being exposed to breathing smoke in a job.*  
+
+```{r}
+assocplot(t(cont_table), main = "Residuals and number of observations")
+```  
+
+*The cells for females which are not exposed to breathing smoke in a job and for males who are (black color) indicate that the observations are higher than it was expected. Other two cells (red color) show that the observed values are lower than expected ones. It means that there are much more men than women who are exposed to breathing smoke in a job and much more women that men who are not exposed to breathing smoke in a job.*  
+
+###Conclusion   
+
+We **decline the H0-hypothesis** and conclude that gender and being exposed to breathing smoke in a job are dependent variables. Men are more likely to be exposed to breathing smoke in a job, while women are not. 
+
+##T-TEST {.tabset .tabset-fade .tabset-pills}  
+
+###Hypotheses
+
+```{r}  
+hh0 <- as.data.frame(cbind("H0:", "The average number of cigarettes smoked per day by females is not different from that smoked by males."))
+hh1 <- as.data.frame(cbind("H1:", "The average number of cigarettes smoked per day by females is different from that smoked by males."))
+HHs <- as.data.frame(rbind(hh0, hh1))
+colnames(HHs) <- c(" ", " ")
+
+HHs %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+  row_spec(1:2, background = "White")
+``` 
+
+###Data Examination
+
+We build a boxpolot.  
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+ggplot(data2, aes(y = cgtsday, x = gndr)) + 
+  geom_boxplot(fill = c("skyblue", "salmon")) +
+  stat_summary(fun.y = mean, geom = "point", shape = 4, size = 4) +
+  theme_classic() +
+  labs(title = "Difference in amount of cigerettes smoked a day between males and females", x = "Gender", y = "Cigarettes smoked per day")
+```  
+
+*From the boxplot it is seen that in Slovenia men smoke more cigarettes per day than women.*
+
+We check the distribution of our data with numbers.  
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+describeBy(data2, data2$gndr)
+```
+
+*For male skew value is 0.01, so as should be for normal distribution. For female it is 0.45, so less normally but still less than 1.0.* 
+*The negative kurtosis values show that the data has lighter tails than the standard distribution.*  
+
+We build a histogram.  
+
+```{r  warning=FALSE, error=FALSE, message=FALSE}
+ggplot(data2, aes(x = cgtsday, fill = gndr), na.rm = TRUE) +
+  geom_histogram(binwidth = 5, alpha = 0.75) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Smoking habits in Slovenia",x = "Cigarettes smoked per day", y = "Density") +
+  geom_vline(aes(xintercept = mean(data2$cgtsday, na.rm = TRUE), color='mean'), show.legend = TRUE, size = 1) +
+  geom_vline(aes(xintercept = median(data2$cgtsday, na.rm = TRUE), color='median'), show.legend = TRUE, size = 1) +
+  scale_fill_manual(values = c("skyblue", "salmon"), guide = FALSE) +
+  scale_color_manual(values = c("hotpink4", "orangered")) +
+  theme(legend.title = element_blank()) +
+  facet_grid(data2$gndr)
+```  
+
+*Histogram shows that distribution in both groups is close to normal but still is not.*
+
+We filter our data by gender and build Q-Q plot.  
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+m <- data2 %>%
+  filter(gndr == 'Male')
+f <- data2 %>%
+  filter(gndr == 'Female')
+par(mfrow = c(1,2))
+qqnorm(m$cgtsday); qqline(m$cgtsday, col= "red", lty = 5, lwd = 2)
+qqnorm(f$cgtsday); qqline(f$cgtsday, col = "red", lty = 5, lwd = 2)
+```  
+
+*Q-Q plots show that the distributions are not really normal.*
+
+###T-Test
+
+We apply T-test formula.  
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+t.test(f$cgtsday, m$cgtsday, paired = F, var.equal = F)
+```  
+
+*On average men smoke 15 cigarettes a day whereas women smoke only 11. The t-statistic t(272.2) = - 5 (p-value < 0.001), so we can claim that there is a statistically significant difference between men and women in amount of cigarettes they smoke in a day.*  
+
+
+###Wilcox Test
+
+We apply non-parametric test.  
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+wilcox.test(x = f$cgtsday, y = m$cgtsday, paired = F)
+```  
+
+*The Wilcoxon rank sum W = 6985.5 (p-value < 0.001), which means that different genders smoke different amount of cigarettes in a day and this difference is statistically significant.*
+
+###Conclusion   
+
+We **reject the H0-hypothesis** and conclude that the average number of cigarettes smoked per day by males is bigger than that smoked by females. 
+
+
+#PART 3 - Difference in weights & marital statuses
+
+##Individual Contribution  
+
+```{r}
+mmm0 <- as.data.frame(cbind("Together", "We chose the variables and interpreted the hypotheses and conclusions together. Also, each of us added his/her piece of information into the prehistory of our analysis."))
+mmm1 <- as.data.frame(cbind("Alex Stephenson", "Alex run post hoc test, non-parametric test and non-parametric post hoc test."))
+mmm2 <- as.data.frame(cbind("Anna Gorobtsova", "Anna checked the normality of residuals and run F-test."))
+mmm3 <- as.data.frame(cbind("Elizaveta Dyachenko", "Elizaveta was dealing with manipulations on marital status and she was responsibel for the look of the project."))
+mmm4 <- as.data.frame(cbind("Marina Romanova", "Marina was also dealing with manipulations on marital status and a boxplot. Besides, Marina checked the homogeneity of variances."))
+IIIC <- as.data.frame(rbind(mmm0, mmm1, mmm2, mmm3, mmm4))
+colnames(IIIC) <- c("Name", "Contribution")
+
+IIIC %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+  row_spec(1:5, background = "White")
+```
+
+##Hypotheses
+
+```{r}  
+hhh0 <- as.data.frame(cbind("H0:", "Difference between mean weights for people of different marital statuses in Slovenia is not statistically significant."))
+hhh1 <- as.data.frame(cbind("H1:", "Difference between mean weights for people of different marital statuses in Slovenia is statistically significant."))
+HHHs <- as.data.frame(rbind(hhh0, hhh1))
+colnames(HHHs) <- c(" ", " ")
+
+HHHs %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+  row_spec(1:2, background = "White")
+``` 
+
+We wanted to look at the relationship between weight and marital status - whether different marital status? had a significant effect on differences in weight. Weight gain is a problem world wide and Slovenia is no exception - 69.5% and 57.7% of men and women respectively are overweight and 29.5 %and 27.8% obese. This is approximately double the worldwide average (Source: Source: WHO Global Health Observatory Data Repository (1)). Current research suggests that marriage is associated with weight gain and that divorce and widowhood are linked to weight loss (Umberson 1992, Sobal et al 2003) - the first argument is in line with our findings: there was a significant difference in the average weight of those who had married vs. those who had never married. 
+
+Further analysis might look to control age - for example, there are below the age of 25 there were 136 respondents who had never married (1/3 of the total amount), only 2 who had married and no divorcees or widows. It is possible, therefore, that age is playing a role in the lower weight of the never married cohort (given we know rates of obesity are higher in older people).  
+
+##Data Examination {.tabset .tabset-fade .tabset-pills}
+
+```{r pages.print=2, warning=FALSE, error=FALSE, message=FALSE, echo=FALSE} 
+data3 <- select(ESS, c("maritalb","weight","agea"))
+data3 <- na.omit(data3)
+
+str(data3)
+data3$agea1 <- as.numeric(as.character(data3$agea))
+data3$weight1 <- as.numeric(as.character(data3$weight))
+
+RawData <- data.table(Marital_Status = data3$maritalb, Age = data3$agea1)
+MeanData <- RawData[,
+   list(Mean_Age = mean(Age)
+   ),
+   by = "Marital_Status"]
+MeanData  
+```  
+
+###Marital Status  
+
+```{r warning=FALSE, error=FALSE, message=FALSE}  
+par(mar = c(5, 25, 2, 2))
+barplot(table(data3$maritalb)/nrow(data3)*100, las = 2, horiz = T)  
+```  
+
+Given our analysis is aiming to understand whether marital status has an effect on weight we have decided to merge variable "Legally married"" with variable "In a legally registered civil union" and variable "Legally divorced/civil union dissolved" with variable "Legally separated". For the purpose of this analysis they are the same - a civil union is a non religious marriage certificate (often between homosexual couples whereby the church, or the law, prohibits marriages). Slovenia has recognized partnerships (Slovene: "partnerska zveza"") since 24 February 2017. These provide same-sex partners with all the legal rights of marriages, with the exception of joint adoption and in vitro fertilisation. Previously, Slovenia had recognized the more limited "registrirana partnerska skupnost" for same-sex couples since 23 July 2006, which gave same-sex partners access to one another's pensions and property.
+
+```{r warning=FALSE, error=FALSE, message=FALSE}  
+data3$maritalb1 <- ifelse(data3$maritalb == "Legally married", "Married",
+                             ifelse(data3$maritalb == "In a legally registered civil union", "Married",
+                                    ifelse(data3$maritalb == "Legally divorced/civil union dissolved", "Divorced",
+                                           ifelse(data3$maritalb == "Legally separated", "Divorced",
+                                                  ifelse(data3$maritalb == "Widowed/civil partner died", "Widowed", "Never married")
+                                           )
+                                    )
+                             )
+)
+```  
+
+```{r warning=FALSE, error=FALSE, message=FALSE}  
+par(mar = c(3,10,0,3))
+barplot(table(data3$maritalb1)/nrow(data3)*100, las = 2, horiz = T)
+```  
+
+*Now we have four groups of comparable size, which is needed for ANOVA.*
+
+###Weight by Marital Status
+
+```{r warning=FALSE, error=FALSE, message=FALSE}  
+describeBy(data3$weight1, data3$maritalb1, mat = TRUE) %>% 
+  select(Marital_Status = group1, N=n, Mean=mean, SD=sd, Median=median, Min=min, Max=max, 
+                Skew=skew, Kurtosis=kurtosis, st.error = se) %>% 
+  kable(align=c("lrrrrrrrr"), digits=2, row.names = FALSE,
+        caption="Weight by Marital Status") %>% 
+  kable_styling(bootstrap_options=c("bordered", "responsive","striped"), full_width = FALSE) 
+```  
+
+*The weight is normally distrubited within different marital statuses.*
+
+Then we create a boxplot.
+
+```{r warning=FALSE, error=FALSE, message=FALSE} 
+ggplot(data3, aes(x = maritalb1, y = weight1)) +
+  geom_boxplot(aes(alpha = 0.4)) +
+  theme_classic() +
+  labs(x = "Marital Status", y = "Weight", title = "The Distrubution of Weight according to Marital Status") +
+  theme(legend.position="none")
+```  
+
+*From the boxplot, we see that the weight is distributed rather normally across the marital statuses and that it is slightly lower among the never married respondents.*
+
+##ANOVA {.tabset .tabset-fade .tabset-pills}
+
+ANOVA has three assumptions:  
+1. independence of observations  
+2. normal distribution of residuals  
+3. equal variances
+
+###Homogenity of variances
+
+```{r warning=FALSE, error=FALSE, message=FALSE}  
+leveneTest(data3$weight1 ~ data3$maritalb1)  
+```  
+
+*P-value is 0.1783 therefore variances are equal. Thus, in ANOVA we should indicate var.equal = T.*
+
+###F-test  
+
+```{r warning=FALSE, error=FALSE, message=FALSE}  
+aov(data3$weight1 ~ data3$maritalb1)
+```  
+
+```{r warning=FALSE, error=FALSE, message=FALSE}  
+aov.out <- aov(data3$weight1 ~ data3$maritalb1) 
+summary(aov.out) 
+```  
+
+*F(3, 1180) = 13.062 and p-value of <0.001 indicate that the difference in weight across marital status is statistically significant.* 
+
+###Checking residuals
+
+Normality of residuals. 
+
+```{r warning=FALSE, error=FALSE, message=FALSE}  
+plot(aov.out, 2) 
+```  
+
+*Residual are normal.*
+
+###Post hoc test
+
+Next, we want to find out which of our variables create the significance.
+As our variances are equal we can run a Tukey test to find out. 
+
+```{r warning=FALSE, error=FALSE, message=FALSE}  
+par(mar = c(5, 10, 3, 1))
+Tukey <- TukeyHSD(aov.out)
+plot(Tukey, las = 2)  
+```  
+
+*As we can see from the graph, the pairwise tests that have significantly different means at a 95% confidence level are 'Married' and 'Never married' and 'Widowed' and 'Married'. This fits the sociological theory that marrying and being widowed cause a change in weight.*
+
+###Non-parametric Test 
+
+Non-parametric test for ANOVA is the Kruskal-Wallis test.  
+**H0:** Mean ranks of people from different marital satuses are the same.
+
+```{r warning=FALSE, error=FALSE, message=FALSE}  
+data3$maritalb2 <- as.factor(data3$maritalb1)
+kruskal.test(data3$weight1 ~ data3$maritalb2)  
+```  
+
+*With KW chi-square(3) = 38.916 and p-value < 0.001, we can state that the mean ranks of different marital statuses are not the same. This results confirm our results in the ANOVA test.*
+
+As Kruskal-Wallis test is significant, we run non-parametric post hoc test - Dunn?s test.
+
+```{r warning=FALSE, error=FALSE, message=FALSE}   
+DunnTest(weight1 ~ maritalb2, data = data3) 
+```  
+
+*Applying Dunn's non-paramtric test, we can say that there is statistically significant difference between 'Never Married - Divorced', 'Never married - Married', and 'Widowed-Married', which actually proves the results of Kruskal-Wallis test.*
+
+
+#PART 4 - The relationship between alcohol & gender
+
+##Individual Contribution  
+
+```{r}
+mmmm0 <- as.data.frame(cbind("Together", "We chose the variables and interpreted the hypotheses and conclusions together. Also, each of us added his/her piece of information into the prehistory of our analysis."))
+mmmm1 <- as.data.frame(cbind("Alex Stephenson", "Compare the models, test accuracy of the models through prediction, create an output table, edit and format final document."))
+mmmm2 <- as.data.frame(cbind("Anna Gorobtsova", "Build and interpret the first model, interpret coefficients, write out regression equations."))
+mmmm3 <- as.data.frame(cbind("Elizaveta Dyachenko", "Build and interpret the second model, interpret coefficients, write out regression equations, edit and format final document."))
+mmmm4 <- as.data.frame(cbind("Marina Romanova", "Formulate research question, describe and visualise the variables, explain whether the hypothesis has been falsified or not."))
+IIIIC <- as.data.frame(rbind(mmmm0, mmmm1, mmmm2, mmmm3, mmmm4))
+colnames(IIIIC) <- c("Name", "Contribution")
+
+IIIIC %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+  row_spec(1:5, background = "White")
+```
+
+##Research Question & Hypothesis
+
+The health problems associated with drinking are both well documented and vary from country to country. Given this, when looking at improving public health having culturally and socially relative targets are vital. 
+
+We know that Slovenians drink, on average, 11.6L of alcohol a year, putting them 24th ranked globally - just above the United Kingdom and slightly below Germany. We also know that alcohol consumption is roughly evenly split along beer and wine (44.5% and 46.9% respectively) with only 8.6% being made up by spirits. 
+
+What isn?t as well documented is how this alcohol is consumed - over the course of a Friday or Saturday night or evenly thorough out the week. Consequences for the former can be severe (in short, in moderation the body can filter out the harmful products of a few drinks - however once you start to over-consume your liver can?t cope and these harmful products spread around your body (Cullen et al, 2011)).
+
+To get an idea of drinking within Slovenia we decided to take a look at their weekday drinking and compare it to their weekend drinking and then look at how we can use this data to make predictions and solve health problems. If there was a large difference between weekend drinking and weekday drinking this would indicate a culture of binge drinking - and thus influence public health campaigns. On the other hand, if there is only a moderate to no increase this suggests Slovenian drinking culture to be evenly spread, indicating different public health priorities.  
+
+Our research question aims to study the relationship between drinking during the week and gender, and drinking at the weekend. We expect that the results will show that men are more likely than women to drink at all as drinking bahaviour is much more widespread among men (Wilsnack et al., 2009). Also, the fact that people drink much more on weekends that on week days (Lau-Barraco et al., 2016) can lead us to the thought that the more people drink on a weekday the more they drink on a weeekend day. Thus, our hypothesis is:
+
+**The gender of a person and the amount of alcohol drunk by him/her during the week can predict the amount of alcohol drunk at the weekend by this person.** 
+
+##Descriptive Statistics {.tabset .tabset-fade .tabset-pills}
+
+###Data Examination 
+
+```{r error=FALSE, message=FALSE, warning=FALSE}  
+data4 <- select(ESS, alcwkdy, alcwknd, gndr)
+data4 <- na.omit(data4)
+```
+
+Firstly, we check if our variables are of the correct type.  
+
+```{r error=FALSE, message=FALSE, warning=FALSE}   
+str(data4)
+```   
+
+All the variables except for 'gender' should be numeric. Thus, we changed the type of these variables. 
+
+```{r error=FALSE, message=FALSE, warning=FALSE}  
+for (i in 1:2)
+{
+  data4[,i] <- as.numeric(as.character(data4[,i]))
+}  
+
+summary(data4)
+```   
+
+Now, it looks fine!  
+
+We decided to present our description of chosen variables in form of the table.
+
+```{r error=FALSE, message=FALSE, warning=FALSE, echo=FALSE}   
+labs <- c("Grams of alcohol drunk on last weekday", "Grams of alcohol drunk on last weekend day", "Gender")
+data <- set_label(data4, label = labs)  
+view_df(data4, show.prc = F, verbose = F)  
+```  
+
+###Gender  
+
+```{r error=FALSE, message=FALSE, warning=FALSE}   
+ggplot(data4, aes(x = gndr)) + 
+  geom_bar(aes(y = (..count..)/sum(..count..)), legend = TRUE, fill = c("skyblue", "salmon")) + 
+  scale_y_continuous(labels=scales::percent) +
+  ggtitle("Gender of the Respondent") + 
+  xlab("Gender") + 
+  ylab(" ")
+```  
+
+As we can see, amount of males and females in our data is almost the same, so we do not need to apply set.seed() function in order to make it equal.  
+
+###Alcohol Consumption  
+
+Let's firstly build graphs of alcohol consumption on weekday and weekends.  
+
+```{r error=FALSE, message=FALSE, warning=FALSE}  
+ggplot(data4, aes(x = alcwkdy)) + 
+  geom_density(fill = "gold1", colour = "goldenrod2", alpha = 0.6) + 
+  ggtitle("Alcohol Consumption on a Weekday") +
+  xlab("grams of alcohol") +
+  scale_x_continuous(breaks = seq(0, 350, 25), limits=c(0, 354))
+
+ggplot(data4, aes(x = alcwknd)) + 
+  geom_density(fill = "#4271AE", colour = "#1F3552", alpha = 0.6) + 
+  ggtitle("Alcohol Consumption on a Weekend") +
+  xlab("grams of alcohol") +
+  scale_x_continuous(breaks = seq(0, 250, 25), limits=c(0, 286))
+```   
+
+###QQ Plot and T-Test
+
+Both distributions are not destributed normaly and both right-tailed. Let's also build qqplot separated for both variables.  
+
+```{r error=FALSE, message=FALSE, warning=FALSE}  
+qqnorm(data4$alcwknd); qqline(data4$alcwknd, col= "red", lty = 5, lwd = 2)
+qqnorm(data4$alcwkdy); qqline(data4$alcwkdy, col = "red", lty = 5, lwd = 2)
+```  
+
+Distributions are not normal as the line is not straight. 
+
+```{r error=FALSE, message=FALSE, warning=FALSE}     
+t.test(data4$alcwkdy, data4$alcwknd, paired = F, var.equal = F)
+```
+
+Difference in the amount of alcohol last consumed on a weekday and weekend does has statistical significance, with a p value >0.001.  
+
+###Consumption by Gender
+
+```{r error=FALSE, message=FALSE, warning=FALSE}   
+ggplot(data4, aes(y = alcwkdy, x = gndr)) + 
+  geom_boxplot(fill = c("skyblue", "salmon")) +
+  stat_summary(fun.y = mean, geom = "point", shape = 4, size = 4) +
+  theme_classic() +
+  labs(title = "Weekday Drinking Between Males and Females", x = "Gender", y = "Amount of alcohol last drunk on a weekday")
+```  
+
+```{r error=FALSE, message=FALSE, warning=FALSE}   
+ggplot(data4, aes(y = alcwknd, x = gndr)) + 
+  geom_boxplot(fill = c("skyblue", "salmon")) +
+  stat_summary(fun.y = mean, geom = "point", shape = 4, size = 4) +
+  theme_classic() +
+  labs(title = "Weekend Drinking Between Males and Females", x = "Gender", y = "Amount of alcohol last drunk on a weekend")
+```  
+
+As it is seen from the boxplots males drink more than females of both weekends and weekdays. 
+
+##Visualization
+
+Finally, lets look at visualization of the correlation between weekday and weekend drinking. 
+
+```{r error=FALSE, message=FALSE, warning=FALSE}  
+
+corrl <- data.frame(cor(data4$alcwkdy, data4$alcwknd))
+
+p <- ggplot(data4, aes(x = alcwkdy, y = alcwknd)) +
+  geom_point()
+
+p +
+  geom_smooth(method = "lm") +
+  labs(caption = "Correlation = 0.31", y = "Amount of alcohol drunk on a weekend", x = "Amount of alcohol drunk on a weekday")
+```   
+
+There is a positive weak correlation between amount of alcohol drank on weekends and weekdays and it is 0.31.  
+
+##Linear Models    
+
+```{r error=FALSE, message=FALSE, warning=FALSE}   
+model1 <- lm(alcwknd ~ alcwkdy, data=data4)
+model2 <- lm(alcwknd ~ alcwkdy + gndr, data=data4)  
+model3 <- lm(alcwknd ~ alcwkdy * gndr, data=data4)
+```  
+
+```{r error=FALSE, message=FALSE, warning=FALSE}  
+stargazer(model1, model2, model3, type="text", 
+          dep.var.labels=c("Amount of alcohol drunk on a weekend"),
+          covariate.labels=c("Amount of alcohol on a weekday", "Gender (Female)"),
+          out="models.txt") 
+```  
+
+The effects of all of our variables are statistically significant, but lets analyse each of the models. 
+
+##Model Summaries {.tabset .tabset-fade .tabset-pills}
+
+In summary, our model 3 - the interaction model - has the smallest residuals and explains the highest variance. Lets examine each model:
+
+###Model 1  
+
+The F-statistic is significant(p-value: < 2.2e-16), therefore we can say that our model is better than no model at all. According to adjusted R-squared, which shows the explanatory power of a model and estimates 0.09, we can claim that the given model explains aproximately 9% of the variance. Here the intercept is the predicted value of grams of alcohol consumed at weekends, when amount of grams of alcohol consumed at weekdays is equal to 0, here it estimates 20.6 grams. Regression equation for the first model:   
+
+$$Predicted Grams Of Alcohol On Weekend Day = 20,6 + 0,33 * Grams Of Alcohol On Weekday$$  
+
+The interprtation:    
+*With each increase in grams of alcohol drank on weekday by one, grams of alcohol drank on weekend day increases by 0.33.*  
+
+```{r error=FALSE, message=FALSE, warning=FALSE}  
+plot(model1, which=1)  
+```  
+
+The graph  'Residuals vs Fitted' shows that residuals are distributed not quite linearly because the red line is not straight enough and that the residuals are also not homoscedastic as the points are not equally distributed around the 0 line. 
+
+###Model 2  
+
+F-statistic is statistically significant as the p-value < 2.2e-16 and to be significant it needs to be less than 0.05. Thus, we can conclude that our model is better than the one that predicts the amount of alcohol that people drink on weekends with mean value. From the adjusted R-squared we can conclude that our second model explains 13% of variation in grams of alcohol people drink on weekends. The intercept is the predicted value of grams of alcohol drunk on weekends when the amount of grams of alcohol drank on weekdays is equal to 0 and a person is a male, and it is equal to 27,89 grams. So, our regression equation looks like this:
+
+$$Predicted Grams Of Alcohol On Weekend Day = 27,89 + 0,29 * Grams Of Alcohol On Weekday - 12,53 * Female$$
+
+The interpretation is:  
+
+*With each increase in grams of alcohol drank on weekday by one, grams of alcohol drank on weekend day increases by 0.29 and if a respondent is a female, the amount of grams of alcohol drank on weekend day decreases by 12.53.*  
+
+```{r error=FALSE, message=FALSE, warning=FALSE}   
+plot(model2, which=1)
+```   
+
+The graph illustrates that residuals are distributed almost linearly because the red line is very close to the straight one and that the residuals are not homoscedastic as the points are not equally distributed around the 0 line.  
+
+###Model 3 
+
+F-statistic is statistically significant as the p-value < 2.2e-16 and to be significant it needs to be less than 0.05. From the adjusted R-squared we can conclude that the third model explains aproximately 20% of variation in grams of alcohol people drink on weekends.  
+
+$$Predicted Grams Of Alcohol On Weekend Day (Female) = 24,64 + 0,41 * Grams Of Alcohol On Weekday - 6,98 * Female - 0.26 * Grams Of Alcohol On Weekday * Female$$
+
+$$Predicted Grams Of Alcohol On Weekend Day (Male) = 24,64 + 0,41 * Grams Of Alcohol On Weekday$$
+
+Reporing interaction for female: 
+
+*A female, who consumes 300 grams of alcohol during week days is predicted to consume on weekend days the following amount of alcohol (in grams):* 
+
+$24.64 + 0.41 * 300 - 6.98 - 0.26 * 300 = 62.66$  
+
+*62.66 predicted grams of alcohol consumed by a female on weekend days if she consumed 300 grams of alcohol on week days.*
+
+Reporing interaction for male: 
+
+*A male, who consumes 300 grams of alcohol during week days is predicted to consume  on weekend daysthe following amount of alcohol (in grams):*
+
+$24.64 + 0.41 * 300 = 147.64$
+
+*147.64 predicted grams of alcohol consumed by a male on weekend days if he consumed 300 grams of alcohol on week days.* 
+
+##Interaction Effect  
+
+Here our plot suggests that our residuals (measured by the red line) are most closely fitted to 0. 
+
+```{r error=FALSE, message=FALSE, warning=FALSE}   
+plot(model3, which = 1)  
+```   
+
+How is our model different due to the interaction effect added?
+```{r}
+fmodel(model3)
+```
+
+This graph reveals that once an interaction between gender and alcohol weekday consumption is included we see a lower correlation between weekday drinking and weekend drinking for females than males.  
+
+```{r}
+plot_model(model3, type = "pred")
+```
+
+When factoring in the moderation effect we see that there is no overlap between the confidence intervals of the different genders. 
+
+##Using Our Model {.tabset .tabset-fade .tabset-pills}
+
+###Calculating Accuracy  
+
+Having made our models and examined the details of our various models we should try and deduce which model is the best fit. To do this we will use both the ANOVA function, to compare the statistical difference in the means, and then look at quantifying how well the model fits the data. Firstly, lets run ANOVA. 
+
+```{r error=FALSE, message=FALSE, warning=FALSE}  
+anova(model1, model2, model3)
+```
+
+We have a p value of<0.001. This suggests that there is a significant difference between the mean values of our ANOVAs. In other words - our third model, which has an interaction effect between gender and alcohol consumption is better than our first. But by how much? 
+
+One way of understanding what this actually means - and by how much our models differ - is to run a comparison on the sum of square residuals and calculate the square root of the mean of residuals^2. The first gives us an overall figure to compare how much our model is out by and the second gives the average difference between our model and the data point.
+
+```{r error=FALSE, message=FALSE, warning=FALSE}   
+rgrs <- list(model1, model2, model3)
+
+ssq_function <- function(lm) {
+  get_regression_points(lm) %>%
+    mutate(sq_residuals = residual^2) %>%
+    summarize(sum_sq_residuals = sum(sq_residuals), rmse = sqrt(mean(sq_residuals)))
+}
+
+for(i in 1:3) {
+  print(ssq_function(rgrs[[i]]))
+}
+```
+
+As we see, the sum of square residuals is lowest for our third model.
+
+###Train-Test Split  
+
+Alternatively, we can cross validate our results by running a train/test split.
+
+To test the accuracy of our model we're going to split up the data into two parts (based on a roughly 80/20 split, because of the relatively small size of the data set we have chosen to improve the accuract of our model by increasing the size of the training set). We then create a linear model based on the training data. We then compare the predicted results based on our training results to the remaining 20% of the dataset, calculating the square root of the average residual to get an idea of how accurate our model is. 
+
+```{r}
+set.seed(76)
+
+data_shuffled <- data4 %>% 
+sample_frac(size = 1, replace = FALSE)
+
+# Train/test split
+train <- data_shuffled %>%
+slice(1:800)
+test <- data_shuffled %>%
+slice(801:983)
+
+# Fit model to training set
+train_model_2 <- lm(alcwknd ~ alcwkdy * gndr, data=train)
+
+```
+
+We've created the linear model based on 80% of the data. Now we're going to compare the residuals between the remaining 20% of the data and the values our model has predicted (in accordance with the train data). 
+
+```{r}
+get_regression_points(train_model_2, newdata = test)
+
+get_regression_points(train_model_2, newdata = test) %>% 
+mutate(sq_residuals = residual^2) %>%
+summarize(rmse = sqrt(mean(sq_residuals)))
+```
+
+###Making Real Life Predictions  
+
+What, though, does all of this mean? 
+
+In accordance with Bernardi et al's best practice for reporting statistical significance we're going to demonstrate the difference in our models. 
+
+An (imaginary) man comes to us and tells us he's worried about how much his father drinks. We enquire how much his father usually drinks on a weekday. The man tells us he drinks 25g of alcohol. We use our model to predict how much he is likely to be drinking on a weekend day (the man, owing to working on the weekend, is unable to closely monitor his father, but the empty vodka bottles he finds the following morning are worrying...) and thus whether this man has any cause to be concerned.  
+
+```{r error=FALSE, message=FALSE, warning=FALSE}   
+model1_pred <- data.frame("gndr" = 'Male', "alcwkdy" = 25)
+augment(model1, newdata = model1_pred, type.predict = "response")
+```
+
+196g of alcohol is the recommended weekly allowance according to US health guidelines. So far we know he drinks 100g of alcohol, on average, during the week. Based on our first (more inaccurate) model we would conclude that he drinks a further 87g over the weekend (3 * 29). This totals at 187g a week - under the limit.
+
+```{r error=FALSE, message=FALSE, warning=FALSE}   
+model3_pred <- data.frame("gndr" = 'Male', "alcwkdy" = 25)
+augment(model3, newdata = model3_pred, type.predict = "response")
+```
+
+
+However, when we run the same data through our more accurate third model we reach a different conclusion. Instead, we predict he drinks 105g (3 * 35) of alcohol over the weekend. This means his father drinks 205g, over the recommended limit. 
+
+In this instance, our more accurate model has allowed us to determine whether someone's lifestyle has become harmful or not.
+
+Finally, lets compare how accurate our prediction for this man has been compared to what our real data tells us. Lets wrangle our data to identify men who drink 25g of alcohol and what their average alcohol consumption is. 
+
+```{r}   
+man <- data %>%
+  filter(gndr == 'Male') %>%
+  filter(alcwkdy >= 24) %>%
+  filter(alcwkdy <= 26) %>%
+  summarize("Number of observations" = n(), "Grams of alcohol drunk on the weekend" = mean(alcwknd))
+man
+```
+
+Comparing the real data to our prediction shows that the amount of alcohol drunk on the weekend was actually 35.6, compared to our models prediction of 34.8. Pretty accurate! Whilst our small sample size is only 13 it nonetheless shows the accuracy of using linear models for predictions.  
+
+##Conclusion  
+
+```{r}
+ggpairs(data4)
+```
+
+
+We found alcohol consumption to increase by 28% at the weekend - an increase but not a drastic one. Furthermore, we found there to be a correlation between weekday and weekend consumption, albeit a weak one of 0.31. 
+
+Using our model of weekday consumption and gender we could explain 13% of the variance in our predictor variable - weekend consumption. When controlling for gender we expect to see a increase of 0.29g of weekend alcohol consumption for every gram of weekday consumption. The difference between weekend and weekday alcohol consumption was statistically significant. Finally, using ANOVA, sum of squares and square root of mean residuals we concluded the incorportation of gender into our model improved the accuracy of it, as demonstrated through our examples. To conclude, we support our substantive hypothesis that alcohol drunk during the week can be used as a predictive factor for alcohol consumption during the weekend. 
+
+What does this mean for our understanding of Slovenian alcohol consumption? Understanding weekday consumption plays a part in weekend consumption yet other explanatory variables clearly play a role in the increase. As a whole, however, we do not believe this to be a pressing area for further study. The relatively modest increase suggests that binge drinking isn't a huge problem and whilst other factors clearly play a role in the increase we do not believe it is substantial enough to warrant further investigation, and will instead look at other public health issues in the future.
+ 
+#FINAL CONCLUSION
+
+To summarise our findings, we found that there is a statistically significant difference in the amount of cigarettes smoked by men and women. We found there to be significant variance between the weight of different marriage status, and would look to make our findings more robust by factoring in other variables such as weight. Finally, our linear model found that weekday drinking and gender, when coded as interactive effects, are positively correlated and our model accounted for 20% of the variance within the data. However, the relatively small increase led us to conclude that binge drinking is not a problem within Slovenia and hence we would priorities other health issues moving forward.
+
+
+

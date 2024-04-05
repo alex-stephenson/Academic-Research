@@ -1,0 +1,523 @@
+---
+title: "ashmei"
+author: "Alex Stephenson"
+date: "14/08/2020"
+output: html_document
+---
+
+
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(gt)
+options(digits = 2)
+```
+
+
+Data clean
+
+```{r}
+
+
+library(Hmisc)
+
+size <- c("Large|Medium|Small|Xlarge|Xsmall|One size")
+gender <- c("mens|womens|Unisex")
+col <- c('Black|Charcoal|Red|Navy|Rosa|Teal|Silver|Sky|Aubergine|Slate|White|Ivory')
+
+ashmei_clean <- ashmei %>% 
+    mutate(total_profit = `RRP (ex VAT)` - `cost price`,
+         profit_margin = total_profit / `RRP (ex VAT)` * 100) %>% 
+  mutate(colour = ifelse(str_detect(Product, 'Black'), 'Black', 
+                         ifelse(str_detect(Product, 'Charcoal'), 'Charcoal', 
+                                ifelse(str_detect(Product, 'Red'), 'Red',
+                                       ifelse(str_detect(Product, 'Navy'), 'Navy', 
+                                              ifelse(str_detect(Product, 'Black'), 'Black',
+                                                     ifelse(str_detect(Product, 'Rosa'), 'Rosa', 
+                                                            ifelse(str_detect(Product, 'Teal'), 'Teal', 
+                                                                   ifelse(str_detect(Product, 'Silver'), 'Silver', 
+                                                                          ifelse(str_detect(Product, 'Sky'), 'Sky',
+                                                                                 ifelse(str_detect(Product, 'Aubergine'), 'Aubergine', 
+                                                                                        ifelse(str_detect(Product, 'Moss'), 'Moss', 
+                                                                                               ifelse(str_detect(Product, 'Slate'), 'Slate', 
+                                                                                                      ifelse(str_detect(Product, 'White'), 'White', 
+                                                                                                             ifelse(str_detect(Product, 'Ivory'), 'Ivory', NA))))))))))))))) %>% 
+  mutate(size = ifelse(str_detect(Product, 'Xsmall'), 'Xsmall', 
+                         ifelse(str_detect(Product, 'Small'), 'Small', 
+                                ifelse(str_detect(Product, 'Medium'), 'Medium',
+                                       ifelse(str_detect(Product, 'Large'), 'Large', 
+                                              ifelse(str_detect(Product, 'Xlarge'), 'Xlarge',
+                                                     ifelse(str_detect(Product, 'XXlarge'), 'XXlarge', 'One size'))))))) %>% 
+  mutate(gender = ifelse(str_detect(Product, 'Mens'), 'Male', 
+                         ifelse(str_detect(Product, 'Womens'), 'Female', 'Unisex'))) %>% 
+  mutate(colour = as_factor(colour),
+         size = as_factor(size),
+         gender = as_factor(gender)) %>% 
+  mutate(Product = str_replace_all(Product, as.character(gender), ""),
+          Product = str_replace_all(Product, as.character(size), ""),
+         Product = str_replace_all(Product, as.character(col), ""),
+          Product = str_replace_all(Product, ",", ""),
+          Product = str_replace_all(Product, "Mens", ""),
+                   Product = str_replace_all(Product, "Womens", ""),
+         Product = str_replace_all(Product, "X", ""))
+
+
+
+ashmei_clean_long <- ashmei_clean %>% 
+  pivot_longer(augSalesQuantity:julSalesQuantity,
+               names_to = "month",
+               values_to = "Sales") %>% 
+  mutate(month = (str_remove(month, 'SalesQuantity')),
+         month = capitalize(month))
+
+
+```
+
+
+Task 1
+
+```{r}
+ashmei <- readxl::read_xlsx("Dummy_Dataset_Incomplete.xlsx")
+
+ashmei_clean_profit <- ashmei_clean %>% 
+  mutate(total_profit = `RRP (ex VAT)` - `cost price`,
+         profit_margin = total_profit / `RRP (ex VAT)` * 100)
+  
+ashmei_clean_profit <- ashmei_clean_profit %>% 
+  filter(profit_margin < 60) %>% 
+  dplyr::select(Product, gender, colour, profit_margin) %>% 
+  unique()
+  
+ashmei_clean_profit <- ashmei_clean_profit[1:3,]
+
+
+ashmei_clean_profit %>%
+  gt() %>% 
+  tab_header(
+    title = md("&#x1f3c3; &#128692;  Products with Profit Margins Below 60%  &#128692; &#x1f3c3;")) %>% 
+  tab_options(
+  #  row_group.background.color = "#FFEFDB80",
+    heading.background.color = "#EFFBFC")
+
+  
+
+  
+```
+
+
+Task 2
+
+```{r}
+
+marketing_agenda <- ashmei_clean %>% 
+  dplyr::select(Product, size, colour, gender, profit_margin, sepSalesQuantity, octSalesQuantity, novSalesQuantity, availableStock, `RRP (inc VAT)`, `cost price`) %>%
+ # filter(sepSalesQuantity > 2 | octSalesQuantity > 2| novSalesQuantity > 2, availableStock != 0) %>% 
+  mutate(total_autumn_sales = sepSalesQuantity + octSalesQuantity + novSalesQuantity) %>% # work of which sell best in Autumn
+  filter(total_autumn_sales < availableStock) %>% #work out which ones are unlikely to run out of stock
+  mutate(total_revenue = total_autumn_sales * (`RRP (inc VAT)` - `cost price`),
+         stock_value = availableStock * (`RRP (inc VAT)` - `cost price`))  %>% 
+    rename(available_stock = availableStock) %>% 
+  mutate(growth_value = (available_stock - total_autumn_sales) * `RRP (inc VAT)`) %>% 
+  dplyr::select(Product, colour, gender, size, profit_margin, total_autumn_sales, available_stock, growth_value, total_revenue) %>%
+#  arrange(desc(total_revenue)) %>% 
+  arrange(desc(growth_value)) %>% 
+  head(n = 10) %>% 
+  rename(past_revenue = total_revenue)
+
+
+marketing_table <- marketing_agenda %>% 
+  gt(groupname_col = "Product") %>% 
+  tab_spanner(label = "Product Details", columns = vars(Product, colour, gender, size)) %>%
+  tab_header(
+    title = md("&#x1f3c3; &#128692;  Autumn Marketing Agenda  &#128692; &#x1f3c3;"),
+    subtitle = "Calculations based on autumn sales for the previous year and ranked by value of available stock"
+  ) %>% 
+  cols_align(align = "right", columns = TRUE) %>% 
+  tab_options(
+  #  row_group.background.color = "#FFEFDB80",
+    heading.background.color = "#EFFBFC",
+    column_labels.background.color = "#EFFBFC",
+    stub.background.color = "#EFFBFC",
+    stub.border.style = "dashed",
+    stub.border.color = "#989898",
+    stub.border.width = "1px",
+    summary_row.border.color = "#989898",
+    table.width = pct(100),
+    table.border.top.color = "black",
+    table.border.top.width = 2,
+    table.border.bottom.width = 2,
+    table.border.right.width = 2,
+    table.border.left.width = 2,
+    table.border.bottom.color = "black",
+    table.border.right.color = "black", 
+    table.border.left.color = "black"
+  ) %>%
+  opt_all_caps()
+
+marketing_table
+
+```
+
+The aim of this assignment was to direct marketing efforts for the autumn season. I approached this by looking at which products had the highest growth value. This metric should be understood as the potential increase in revenue for an item based on previous sales and available stock. For products that generate a lot of revenue (e.g. cycling bib shorts) they may have a low growth value if the available stock only marginally exceeds previous sales. As a result, it becomes clear that the stock that should be marketing efforts focused on are ones that may not necessarily have sold heavily in the past but have a high stock count, such as the Run Softshell Jacket. 
+
+
+##task 3 
+
+
+```{r}
+
+stock <- ashmei %>% 
+  dplyr::select(`RRP (inc VAT)`, Product, sepSalesQuantity, octSalesQuantity, novSalesQuantity, 
+         availableStock, `RRP (ex VAT)`, `cost price`, `Units sold (Last 12 months)`, availableStock) %>% 
+  mutate(total_autumn_sales = sepSalesQuantity + octSalesQuantity + novSalesQuantity) %>% 
+  filter(availableStock < total_autumn_sales) %>% 
+  mutate(expected_autumn_deficit = total_autumn_sales - availableStock,
+         expected_autumn_lost_rev = expected_autumn_deficit * `RRP (inc VAT)`) %>% 
+ # dplyr::select(Product, expected_autumn_deficit, expected_autumn_lost_rev) %>% 
+  head(n = 6) %>% 
+  dplyr::select(Product, `RRP (inc VAT)`, availableStock, total_autumn_sales, expected_autumn_deficit, expected_autumn_lost_rev) %>% 
+  gt() %>% 
+  tab_header(
+    title = md("&#x1f3c3; &#128692;  Products Due to Run Out of Stock  &#128692; &#x1f3c3;")) %>% 
+  tab_options(
+  #  row_group.background.color = "#FFEFDB80",
+    heading.background.color = "#EFFBFC")
+
+
+
+```
+
+
+The aim of this assignment was to project expected lost revenue if the next restock is done in 90 days. I used data from September, October and November as my 90 days point of references. 
+
+Of the 847 products _Ashmei_ have on file, the previous years' Autumn sales exceeded current stock numbers in 146 cases. This figure was arrived at by combining September, October and November sales figures and comparing them to the available stock for each product. In 146 cases previous sales exceeded current stock. The expected autumn SKU deficit was then calculated by calculating the difference between total previous autumn sales and available stock for each of the 146 items. The expected autumn lost revenue was then calculated by multipling the item deficit by the RRP (incl VAT). The total expected lost revenue was £56426.
+
+
+### final task
+
+clean
+
+```{r fig.height=8}
+
+library(Hmisc)
+
+size <- c("Large|Medium|Small|Xlarge|Xsmall|One size")
+gender <- c("mens|womens|Unisex")
+col <- c('Black|Charcoal|Red|Navy|Rosa|Teal|Silver|Sky|Aubergine|Slate|White|Ivory')
+
+ashmei_clean <- ashmei %>% 
+    mutate(total_profit = `RRP (ex VAT)` - `cost price`,
+         profit_margin = total_profit / `RRP (ex VAT)` * 100) %>% 
+  mutate(colour = ifelse(str_detect(Product, 'Black'), 'Black', 
+                         ifelse(str_detect(Product, 'Charcoal'), 'Charcoal', 
+                                ifelse(str_detect(Product, 'Red'), 'Red',
+                                       ifelse(str_detect(Product, 'Navy'), 'Navy', 
+                                              ifelse(str_detect(Product, 'Black'), 'Black',
+                                                     ifelse(str_detect(Product, 'Rosa'), 'Rosa', 
+                                                            ifelse(str_detect(Product, 'Teal'), 'Teal', 
+                                                                   ifelse(str_detect(Product, 'Silver'), 'Silver', 
+                                                                          ifelse(str_detect(Product, 'Sky'), 'Sky',
+                                                                                 ifelse(str_detect(Product, 'Aubergine'), 'Aubergine', 
+                                                                                        ifelse(str_detect(Product, 'Moss'), 'Moss', 
+                                                                                               ifelse(str_detect(Product, 'Slate'), 'Slate', 
+                                                                                                      ifelse(str_detect(Product, 'White'), 'White', 
+                                                                                                             ifelse(str_detect(Product, 'Ivory'), 'Ivory', NA))))))))))))))) %>% 
+  mutate(size = ifelse(str_detect(Product, 'Xsmall'), 'Xsmall', 
+                         ifelse(str_detect(Product, 'Small'), 'Small', 
+                                ifelse(str_detect(Product, 'Medium'), 'Medium',
+                                       ifelse(str_detect(Product, 'Large'), 'Large', 
+                                              ifelse(str_detect(Product, 'Xlarge'), 'Xlarge',
+                                                     ifelse(str_detect(Product, 'XXlarge'), 'XXlarge', 'One size'))))))) %>% 
+  mutate(gender = ifelse(str_detect(Product, 'Mens'), 'Male', 
+                         ifelse(str_detect(Product, 'Womens'), 'Female', 'Unisex'))) %>% 
+  mutate(colour = as_factor(colour),
+         size = as_factor(size),
+         gender = as_factor(gender)) %>% 
+  mutate(Product = str_replace_all(Product, as.character(gender), ""),
+          Product = str_replace_all(Product, as.character(size), ""),
+         Product = str_replace_all(Product, as.character(col), ""),
+          Product = str_replace_all(Product, ",", ""),
+          Product = str_replace_all(Product, "Mens", ""),
+                   Product = str_replace_all(Product, "Womens", ""),
+         Product = str_replace_all(Product, "X", ""))
+
+
+
+ashmei_clean_long <- ashmei_clean %>% 
+  pivot_longer(augSalesQuantity:julSalesQuantity,
+               names_to = "month",
+               values_to = "Sales") %>% 
+  mutate(month = (str_remove(month, 'SalesQuantity')),
+         month = capitalize(month))
+
+```
+
+
+
+
+```{r}
+
+library(stargazer)
+library(broom)
+
+ashmei_clean_long %>% 
+lm(Sales ~ Product + colour + size + month, data = .) %>% 
+  tidy(conf.int = T) %>% 
+  filter(term != "(Intercept)") %>% 
+  arrange(desc(estimate)) %>% 
+  filter(!str_detect(term, "Product")) %>% 
+#    mutate(category = str_remove(term, 'SalesQuantity'))
+  extract(term, c("category", "term"), "^([a-z]+)([A-Z].*)") %>%
+  mutate(term = fct_reorder(term, estimate)) %>% 
+  ggplot(aes(estimate, term, color = category)) +
+  geom_point() +
+  geom_vline(lty = 2, xintercept = 0) + #anything that crosss zero doesn't have a statistically significant effect. The 0 line here is reference to the 'other' category (e.g. the general market)
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high)) +
+    geom_vline(lty = 2, xintercept = 0) +
+  facet_wrap(~ category, ncol = 1, scales = "free_y") +
+  theme(legend.position = "none") +
+  labs(x = "Estimated effect on sales",
+       y = "",
+       title = "Coefficients that predict number of sales")
+
+
+
+```
+
+
+
+
+
+```{r}
+
+most_lucrative_products <- ashmei_clean %>% 
+  #dplyr::select(Product, size, colour, gender, profit_margin, sepSalesQuantity, octSalesQuantity, novSalesQuantity, availableStock, `RRP (inc VAT)`, `cost price`) %>%
+  mutate(total_sales = rowSums(.[6:17])) %>% 
+  mutate(total_revenue = total_sales * (`RRP (inc VAT)` - `cost price`),
+         stock_value = availableStock * (`RRP (inc VAT)` - `cost price`))  %>% 
+    rename(available_stock = availableStock) %>% 
+  mutate(growth_value = (available_stock - total_sales) * `RRP (inc VAT)`) %>% 
+  dplyr::select(Product, colour, gender, size, profit_margin, total_sales, total_revenue) %>%
+  arrange(desc(total_revenue)) %>% 
+  head(n = 10) %>% 
+  rename(past_revenue = total_revenue) %>% 
+  gt(groupname_col = "Product") %>% 
+  tab_spanner(label = "Product Details", columns = vars(Product, colour, gender, size)) %>%
+  tab_header(
+    title = md("&#x1f3c3; &#128692;  Highest Grossing Products  &#128692; &#x1f3c3;"),
+    subtitle = "Calculations based on autumn sales for the previous year and ranked by value of available stock"
+  ) %>% 
+  cols_align(align = "right", columns = TRUE) %>% 
+  tab_options(
+  #  row_group.background.color = "#FFEFDB80",
+    heading.background.color = "#EFFBFC",
+    column_labels.background.color = "#EFFBFC",
+    stub.background.color = "#EFFBFC",
+    stub.border.style = "dashed",
+    stub.border.color = "#989898",
+    stub.border.width = "1px",
+    summary_row.border.color = "#989898",
+    table.width = pct(100),
+    table.border.top.color = "black",
+    table.border.top.width = 2,
+    table.border.bottom.width = 2,
+    table.border.right.width = 2,
+    table.border.left.width = 2,
+    table.border.bottom.color = "black",
+    table.border.right.color = "black", 
+    table.border.left.color = "black"
+  ) %>%
+  opt_all_caps()
+
+most_lucrative_products
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+ashmei_clean_long %>% 
+  filter(month == "Sep") %>%
+  lm(Sales ~ colour + size + gender, data = .) %>% 
+  tidy(conf.int = T) %>% 
+  filter(term != "(Intercept)") %>% 
+  arrange(desc(estimate)) %>% 
+#    mutate(category = str_remove(term, 'SalesQuantity'))
+  extract(term, c("category", "term"), "^([a-z]+)([A-Z].*)") %>%
+  mutate(term = fct_reorder(term, estimate)) %>% 
+  ggplot(aes(estimate, term, color = category)) +
+  geom_point() +
+  geom_vline(lty = 2, xintercept = 0) + #anything that crosss zero doesn't have a statistically significant effect. The 0 line here is reference to the 'other' category (e.g. the general market)
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high)) +
+    geom_vline(lty = 2, xintercept = 0) +
+  facet_wrap(~ category, ncol = 1, scales = "free_y") +
+  theme(legend.position = "none") +
+  labs(x = "Estimated effect on sales",
+       y = "",
+       title = "Coefficients that predict number of sales")
+```
+
+
+```{r}
+ashmei_clean_long %>% 
+  filter(gender != "Male") %>%
+  lm(Sales ~ colour + size + month, data = .) %>% 
+  tidy(conf.int = T) %>% 
+  filter(term != "(Intercept)") %>% 
+  arrange(desc(estimate)) %>% 
+#    mutate(category = str_remove(term, 'SalesQuantity'))
+  extract(term, c("category", "term"), "^([a-z]+)([A-Z].*)") %>%
+  mutate(term = fct_reorder(term, estimate)) %>% 
+  ggplot(aes(estimate, term, color = category)) +
+  geom_point() +
+  geom_vline(lty = 2, xintercept = 0) + #anything that crosss zero doesn't have a statistically significant effect. The 0 line here is reference to the 'other' category (e.g. the general market)
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high)) +
+    geom_vline(lty = 2, xintercept = 0) +
+  facet_wrap(~ category, ncol = 1, scales = "free_y") +
+  theme(legend.position = "none") +
+  labs(x = "Estimated effect on sales",
+       y = "",
+       title = "Coefficients that predict number of sales")
+```
+
+
+### logit regression
+
+
+```{r}
+
+ashmei_clean_long <- ashmei_clean_long %>% 
+  mutate(sold = ifelse(Sales > 0, 1, 0))
+
+my_logit <- glm(sold ~ colour + size + gender + month, data = ashmei_clean_long, family = "binomial"(link = 'logit'))
+
+my_logit %>% 
+  tidy() %>% 
+  arrange(desc(estimate))
+
+
+augment(my_logit, ashmei_clean_long, type.predict = "response") %>% 
+  ggplot(aes(colour, .fitted)) +
+  geom_line()
+
+
+tidy(my_logit, conft.int = T) %>%   
+  filter(term != "(Intercept)") %>% 
+  arrange(desc(estimate)) %>% 
+#    mutate(category = str_remove(term, 'SalesQuantity'))
+  extract(term, c("category", "term"), "^([a-z]+)([A-Z].*)") %>%
+  mutate(term = fct_reorder(term, estimate)) %>% 
+  ggplot(aes(estimate, term, color = category)) +
+  geom_point() +
+  geom_vline(lty = 2, xintercept = 0) + #anything that crosss zero doesn't have a statistically significant effect. The 0 line here is reference to the 'other' category (e.g. the general market)
+#  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high)) +
+    geom_vline(lty = 2, xintercept = 0) +
+  facet_wrap(~ category, ncol = 1, scales = "free_y") +
+  theme(legend.position = "none") +
+  labs(x = "Estimated effect on sales",
+       y = "",
+       title = "Coefficients that predict number of sales")
+
+```
+
+
+
+
+### Prediction 
+
+```{r}
+library(caret)
+library(klaR)
+set.seed(123)
+
+ashmei_clean_long_shuffled <- ashmei_clean_long %>% 
+  sample_frac(size = 1, replace = FALSE)
+
+
+ashmei_train <-ashmei_clean_long_shuffled
+  slice(1:8000)
+  
+  
+ashmei_test <- ashmei_clean_long_shuffled %>% 
+  slice(8000:10164)
+
+train_model <- lm(Sales ~ colour + size + gender + month + Product + `RRP (inc VAT)`, data = ashmei_train)
+
+
+summary(train_model)
+fitted.results <- predict(train_model, newdata = ashmei_test, response = "predict")
+fitted.results <- ifelse(fitted.results > 0.5,1,0)
+
+mean(fitted.results != ashmei_test$Sales)
+
+train_model %>%
+  augment(data = ashmei_train) %>%
+  ggplot(aes(.fitted, Sales)) +
+  geom_point(alpha = .1)
+
+tidy(anova(train_model)) %>%
+  mutate(sumsq / sum(sumsq))
+
+```
+
+
+```{r}
+
+preds <- augment(lm(Sales ~ colour + size + gender + month + Product, data = ashmei_clean_long), type.predict = "response")
+preds$prediction
+preds <- preds %>%
+    mutate(prediction = .fitted > .5)
+
+# Create the confusion matrix
+conf_mat <- preds %>%
+    dplyr::select(Sales, prediction) %>%
+    table()
+
+conf_mat
+```
+
+
+```{r}
+ashmei_clean_long %>% 
+  mutate(sold = ifelse(Sales > 0, 1, 0)) %>% 
+  glm(sold ~ colour + gender + month + Product + size, data =.) %>%
+  augment(type.predict = "response") %>% 
+  mutate(prediction = .fitted > .5) %>% 
+  dplyr::select(sold, prediction) %>% 
+  table()
+
+(7526 + 577) / (7526 + 250 + 577 + 1811)
+
+```
+
+
+
+
+
+
+

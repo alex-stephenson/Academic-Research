@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1612539814066.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1273433314",
+    "id" : "51639107",
+    "lastKnownWriteTime" : 1612873367,
+    "last_content_update" : 1612873367832,
+    "path" : "~/Desktop/R_Studio_Work/Dissertation/Dissertation_R/competencies_analysis/competencies_analysis_diss/final_diss_script.Rmd",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "574,23",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 14,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

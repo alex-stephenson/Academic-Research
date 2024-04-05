@@ -1,0 +1,452 @@
+---
+title: "final_stm_script"
+output:
+  word_document: default
+  html_document: default
+---
+
+
+### Structural topic modelling
+
+The data cleaning / manipulation steps here are, at times, a bit convoluted. 
+```{r}
+library(gt)
+library(tidyverse) 
+library(lubridate) #dates
+library(tidytext) #text analysis
+library(stm) #stm
+library(ggthemes) #for ggplot2 themes
+library(patchwork) #for patching together plots 
+library(tidystm) #STM eval but tidy
+library(igraph) #network analysis
+library(ggraph) #network analysis 
+library(tidygraph) #more network analysis but tidy so can wrangle graphs
+library(SnowballC) #stemming words
+library(furrr) #in order to implement tidy parallel processing
+plan(multiprocess) #engage multiple cores
+
+data <- read_csv("ira_tweets_csv_hashed.csv")
+
+tweets <- data %>% 
+  filter(tweet_language == "ru" | account_language == "ru")
+
+rm(data)
+
+tweets <- tweets %>% 
+  select(-user_display_name, -user_profile_description, -user_profile_url, -user_reported_location, -account_creation_date, -longitude, -latitude, -poll_choices)
+
+
+user_data_info <- read_csv("/Users/alexstephenson/Desktop/R_Studio_Work/Dissertation/Dissertation_R/ira_users_csv_hashed.csv")
+
+user_data_info <- user_data_info %>% 
+  filter(account_language == "ru")
+
+
+
+### import stopwords lexicon
+
+english_stopwords <- get_stopwords("en")
+stopwords_ru <- read_delim("/Users/alexstephenson/Desktop/R_Studio_Work/Dissertation/Dissertation_R/stopwords-ru.txt", delim = ",", col_names  = F)
+names(stopwords_ru) <- c('word')
+stopwords_ru <- as_tibble(stopwords_ru)
+
+custom_stop_words <- bind_rows(tibble(word = c("https", "t.co", "rt", "amp", "все", "это", 'мной', 'почему', 'спасибо', 'просто', 'очень', "привет", "всё", "тебе", "вообще", "день", "думаю", "пока", "такое", "такие", "таких", "изза", "ещё", "знаю")),  
+                               stopwords_ru)
+extra_stop_words <- c('сам', 'хочет', 'наш')
+
+
+```
+
+```{r}
+
+pre_mh17_network_data <- tweets %>% 
+  filter(tweet_time < as.Date("2014-07-17")) %>%
+  filter(retweet_userid %in% tweets$userid) %>% 
+  select(userid, retweet_userid) %>% 
+  na.omit() %>% 
+  add_count(retweet_userid, userid, sort = T) %>% 
+  distinct(.) %>% 
+  rename(weight = n) %>% 
+  graph_from_data_frame()
+
+pre_mh17_network_graph_df <- igraph::as_data_frame(pre_mh17_network_data, what = "both") 
+
+mh17_accounts_nodes <- pre_mh17_network_graph_df$vertices %>% 
+  mutate(degree = igraph::degree(pre_mh17_network_data),
+         strength = igraph::strength(pre_mh17_network_data))
+
+mh_17_top_100 <- mh17_accounts_nodes %>% 
+  arrange(desc(strength)) %>%  
+  top_n(strength, n = 50)
+
+
+influential_MH17_tweets <- tweets %>% 
+  filter(tweet_time > as.Date("2014-07-17") & tweet_time < as.Date("2014-08-01")) %>% #filter for tweets in two weeks following crash
+  filter(userid %in% mh_17_top_100$name) %>% #filter for influential accounts
+  select(tweet_text, userid, tweet_time) %>%
+  mutate(rows = row_number())
+
+influential_MH17_tokens <- influential_MH17_tweets  %>% 
+  unnest_tokens(word, tweet_text, token = "tweets") %>% #unnest tweets into single word format
+  filter(!word %in% stopwords_ru$word) %>% #remove stopwords
+  filter(!word %in% english_stopwords$word) %>% 
+  filter(!str_detect(word, "^@")) %>% 
+  filter(!str_detect(word, "^http")) %>% 
+  filter(!word == "rt") %>% 
+  mutate(word = SnowballC::wordStem(word, language = "russian")) %>% #stem words
+  filter(!word %in% extra_stop_words) #now remove some common stopword stems
+
+influential_MH17_tweets_rebuilt <-  influential_MH17_tokens %>% 
+  group_by(rows) %>% 
+  summarise(tweet_text = paste(word, collapse = " ")) %>% #now I re-construct the tweets based on the row_number variable
+  left_join(influential_MH17_tokens,
+              by = 'rows') %>% 
+  select(-word) %>% 
+  distinct(rows, .keep_all = TRUE) %>% 
+  left_join(mh_17_top_100, 
+            by = c('userid' = 'name')) #now I have added account details, such as strength
+
+
+## our dataframe now looks like this:
+
+
+influential_MH17_tweets_rebuilt %>% head()
+
+```
+
+
+OK now it's time for some machine learning! The aim of this section  is to better understand what the IRA accounts were talking about. Literature suggests there could be a number of possible outcomes. Firstly, the accounts are not directly talking about political events but 'cheerleading' for the regime. Secondly, the accounts are aiming to distract away from events through creating 'meaninglessness'. Finally, that the accounts are specifically addressing issues in order to frame them a particular way. 
+
+```{r}
+
+processed_tweets <- textProcessor(influential_MH17_tweets_rebuilt$tweet_text, metadata = influential_MH17_tweets_rebuilt)
+
+#plotRemoved(processed_tweets$documents, lower.thresh = seq(1, 100, by = 10)) #this gives an idea of the threshold for removing infrequent numbers 
+
+out <- prepDocuments(processed_tweets$documents, processed_tweets$vocab, processed_tweets$meta) #run out #no lower threshold
+
+docs <- out$documents
+vocab <- out$vocab
+meta <- out$meta
+out$meta$tweet_time <- as.numeric(out$meta$tweet_time - min(out$meta$tweet_time)) #need to convert dates to numeric
+```
+
+
+
+
+```{r fig.height=8, fig.width=7}
+
+
+stm_mh17_accounts <- stm(documents = out$documents, vocab= out$vocab, K = 50, prevalence = ~s(tweet_time) + strength, data = out$meta, init.type = "Spectral", seed = 1234, verbose = F, emtol = 1e-4) 
+
+plot(stm_mh17_accounts, type = "summary", xlim = c(0, 0.105), cex = 2)
+
+
+```
+
+Key words for interesting topics can be seen a bit more clearly here:
+
+
+```{r fig.height=7, fig.width=9, beta} 
+tidy_stm_beta <- tidy(stm_mh17_accounts, matrix = "beta")
+
+tidy_stm_beta_topics <- tidy_stm_beta %>% 
+  filter(topic %in% c(5, 25, 38, 43, 49, 20, 42)) %>% 
+  group_by(topic) %>% 
+  top_n(15, beta) %>% 
+  ungroup() %>% 
+  arrange(topic, -beta)
+
+beta_12_graph <- tidy_stm_beta_topics %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(term, beta, color = as.factor(topic))) +
+  geom_col(show.legend = FALSE, alpha = 0.75, colour = "dark grey") +
+  coord_flip() +
+  tidytext::scale_x_reordered() +
+  facet_wrap(~topic, scales = "free", ncol = 3) +
+  theme_solarized() 
+
+beta_12_graph
+
+```
+
+
+### model viz
+
+
+
+```{r results = "asis}
+beta_top_terms <- tidy_stm_beta %>%
+  arrange(beta) %>%
+  group_by(topic) %>%
+  top_n(7, beta) %>%
+  arrange(-beta) %>%
+  select(topic, term) %>%
+  summarise(terms = list(term)) %>%
+  mutate(terms = map(terms, paste, collapse = ", ")) %>% 
+  unnest(cols = c(terms))
+
+tidy_stm_gamma <- tidy(stm_mh17_accounts, matrix = "gamma", document_names = rownames(MH17_sparse))
+
+gamma_terms <- tidy_stm_gamma %>%
+  group_by(topic) %>%
+  summarise(gamma = mean(gamma)) %>%
+  arrange(desc(gamma)) %>%
+  left_join(beta_top_terms, by = "topic") %>% 
+  filter(topic %in% c('5', '25', '38', '17', '36', '11', '44', '43', '49', '42')) %>% #remove if not needed - filters out top topics
+  mutate(topic = paste0("Topic ", topic),
+         topic = reorder(topic, gamma))
+
+
+English_terms <- c('Provation by Kiev, Ukraine, Interesting', 
+                    'Kiev tell the truth, Ukraine, Curious',
+                   'Kiev shot the boeing, Ukraine, read',
+                   'Ukraine, Become, Actually',
+                   'Kiev Tell the Truth, Post, Ukranian',
+                   'Ukraine, New, Revolution',
+                   'No Provocation, ready, provoation',
+                   'America, Sanctions, Crimea, Stop Sanctions, Obama',
+                   'St Petersburg, Suffering, Death',
+                   'Putin, Poroshenko, President')
+                   
+
+gt_stm_terms <- data.frame(gamma_terms, English_terms) %>% 
+  select(-terms) %>% 
+  rename('Terms (in English)' = English_terms) %>% 
+  gt(rowname_col = "topic") %>% 
+  tab_header(
+    title = "Structural Topic Model of IRA tweets about MH17",
+    subtitle = "The 10 most prevalent topics with their top 7 terms"
+  ) 
+```
+
+
+
+
+
+```{r fig.width=5}
+prep <- estimateEffect( ~s(tweet_time) + strength, stm_mh17_accounts, meta = out$meta, uncertainty = "Global")
+
+
+effect <- tidystm::extract.estimateEffect(prep, "tweet_time", method = "continuous") #tidy
+
+#relabel our facet labels
+variable_names <- list( 
+  "5" = "Topic 5: MH17: #ProvocationByKiev" ,
+  "25" = "Topic 25: MH17: #KievTellTheTruth" ,
+  "38" = "Topic 38: MH17: #KievShotTheBoeing",
+  '43' = 'Topic 43: Sanction, Obama, USA, Crimea',
+  '49' = 'Topic 49: Putin, Poroshenko',
+  '20' = 'Topic 20: Shelling, Residences, Silovik, Donetsk'
+)
+
+
+#make a function that acts inside the call to labeller in the facet_wrap() function
+variable_labeller <- function(variable,value){
+  return(variable_names[value])
+}
+
+
+topic_dist_over_time_graph <- effect %>% 
+  mutate(covariate.value = as.POSIXct(covariate.value, origin = "2014-07-17 ")) %>% #convert back from numeric into date
+  filter(topic %in% c(5, 25, 38, 43, 49, 20)) %>% #select desired topics
+  mutate(topic = as.factor(topic)) %>% 
+  ggplot(aes(x = covariate.value, y = estimate, color = topic)) +
+  geom_line() +
+  facet_wrap(~topic, labeller=variable_labeller, ncol = 2, scales = "free") + #facet and label 
+  theme_solarized() +
+  labs(x = "", title = "Estimated topic distribution over time", subtitle = "Tweets from the 50 most influential IRA accounts for the two week period after 14th July 2014")
+
+    
+
+topic_dist_over_time_graph
+```
+
+
+#### Model analysis
+
+Lets see the extent to which the MH17 tweets also picked up on the conspiracies being promoted within the media. The topic model did not suggest this was the case, but I want to manually explore whether this is the case. 
+
+```{r}
+
+conspiracy_words <- c('Каратолов','ракета', 'снаряд', 'истребитель', 'спутник')
+conspiracy_words <- paste(conspiracy_words, collapse= "|")
+tokens <- c('Каратолов', 'бук')
+n <- as.numeric(0, 0)
+pcnt <- as.numeric(0, 0)
+
+
+conspiracy_tokens <- tweets %>% 
+  select(tweet_time, tweet_text) %>% 
+  filter(tweet_time > as.Date("2014-07-17") & tweet_time < as.Date("2014-08-01")) %>% 
+  unnest_tokens(tokens, tweet_text, token = "words")
+
+conspiracy_tokens <- conspiracy_tokens %>% 
+  mutate(obs = nrow(.))
+
+labels = data.frame(tokens = c("бук", 
+                            'истребител', 
+                            'Картаполов',
+                            "ракет",
+                            "снаряд"),
+                    len = c('0', '3','0', '72', '49'))
+
+
+
+conspiracy_tokens_graph <- conspiracy_tokens %>% 
+  filter(str_detect(tokens, conspiracy_words)) %>% 
+  mutate(tokens = SnowballC::wordStem(tokens, language = "russian")) %>% 
+  dplyr::mutate(tokens = dplyr::recode(tokens, 
+                                       'спутников' = 'спутник', 
+                                       'биоспутник' = 'спутник')) %>% 
+  add_count(tokens) %>% 
+  dplyr::distinct(n, .keep_all =T) %>% 
+  mutate(pcnt = n / obs * 100) %>% 
+  select(-tweet_time, -obs) %>% 
+  rbind(data.frame(tokens, n, pcnt)) %>% 
+  ggplot(aes(tokens, pcnt)) +
+  geom_col() +
+  labs(y = "Token frequency as a % of tokens", x = "", title = "Frequency of words associated with conspiracy theories", subtitle = "From tweets between 17th July 2014 and the 1st August 2014") +
+  theme_solarized() +
+  scale_x_discrete(labels=c("бук" = "Buk", 
+                            'истребител' = 'Fighter jet', 
+                            'Каратолов'= 'Karatolov',
+                            "ракет" = "Rocket",
+                            "снаряд" = "Missile",
+                            'спутник' = 'Satellite')) +
+  scale_y_continuous(sec.axis = sec_axis(~ . *19013.2, name = "Token frequency (n)"))
+conspiracy_tokens_graph
+```
+
+
+
+
+Are there any influential accounts that aren't included in the IRA list?
+
+```{r fig.height=14}
+non_IRA_influential_accounts <- tweets %>% 
+  select(userid, retweet_userid) %>% 
+  na.omit()  %>% 
+  count(retweet_userid, sort = T) %>% 
+  dplyr::top_n(100) %>% 
+  filter(!retweet_userid %in% tweets$userid) %>% 
+  filter(n > 10000) 
+
+non_IRA_influential_accounts$account_name <- c('Rianru', 'GazetaRu', 'RT_russian', 'Vesti', 'GazetaRu_All', 'Pravdiva_pravda', 'LENTA_RU', 'TASS', 'LEPRASORIUM', 'harkovnews', 'LIFENEWS_RU', 'Ru_rbc', 'champ_football', 'izvestia_ru', 'tvrain', 'meduzaproject', 'EchoMskNews', '0cub0')
+
+non_IRA_influential_accounts_table <- non_IRA_influential_accounts %>% 
+  select(account_name, n) %>% 
+  dplyr::rename('Account name' = account_name,
+                'Number of IRA interactions' = n) %>% 
+  gt() %>% 
+  fmt_number(
+    columns = 'Number of IRA interactions',
+    sep_mark = ",",
+    decimals = F
+  ) %>% 
+  tab_header(
+    title = "Accounts with which the IRA had heavy engagement"
+  )
+
+#gtsave(non_IRA_influential_accounts_table, 'IRA_accounts.png')
+
+```
+
+
+This provides some diagnostic analysis of our model to inform our selection of the number of clusters
+
+
+```{r}
+MH17_sparse <- influential_MH17_tokens %>% 
+  count(rows, word) %>% 
+  cast_sparse(rows, word, n)
+```
+
+
+```{r}
+many_models <- tibble(K = c(20, 40, 50, 60, 75, 100)) %>%
+  mutate(topic_model = future_map(K, ~stm::stm(MH17_sparse, K = .,  verbose = FALSE))) #future_map here is the multicore processing version of purrr's {map}. Given there is quite a lot of data to be analysed this should speed it up a bit. 
+```
+
+```{r}
+heldout <- make.heldout(MH17_sparse)
+
+k_result <- many_models %>%
+  mutate(exclusivity = map(topic_model, exclusivity),
+         semantic_coherence = map(topic_model, semanticCoherence, MH17_sparse),
+         eval_heldout = map(topic_model, eval.heldout, heldout$missing),
+         residual = map(topic_model, checkResiduals, MH17_sparse),
+         bound =  map_dbl(topic_model, function(x) max(x$convergence$bound)),
+         lfact = map_dbl(topic_model, function(x) lfactorial(x$settings$dim$K)),
+         lbound = bound + lfact,
+         iterations = map_dbl(topic_model, function(x) length(x$convergence$bound)))
+
+
+```
+
+
+```{r fig.height=2}
+
+k_result_image <- k_result %>%
+  transmute(K,
+            Exclusivity = map_dbl(exclusivity, mean),
+            `Lower bound` = lbound,
+            Residuals = map_dbl(residual, "dispersion"),
+            `Semantic coherence` = map_dbl(semantic_coherence, mean),
+            `Held-out likelihood` = map_dbl(eval_heldout, "expected.heldout")) %>%
+  gather(Metric, Value, -K) %>%
+  filter(Metric %in% c('Residuals', 'Semantic coherence', 'Held-out likelihood', 'Exclusivity')) %>% 
+  ggplot(aes(K, Value, color = Metric)) +
+  geom_line(size = 1.5, alpha = 0.7, show.legend = FALSE) +
+  facet_wrap(~Metric, scales = "free_y") +
+  labs(x = "K (number of topics)",
+       y = NULL,
+       title = "Model diagnostics by number of topics",
+       subtitle = "These diagnostics indicate that a good number of topics would be around 50")
+
+k_result_image
+```
+
+
+
+
+
+
+
+
+Any change of strategy? Lets look at the replies. 
+
+
+```{r}
+
+reply_tweets <- tweets %>% 
+  filter(str_detect(tweet_text, '^@')) #n = 350k
+
+reply_tweets_filtered <- reply_tweets %>% 
+  mutate(rownumber = row_number()) %>% 
+  mutate(reply = ifelse(in_reply_to_userid %in% userid, 'Internal', 'External'))
+
+
+number_of_reply_tweets <- reply_tweets_filtered %>% 
+  ggplot(aes(tweet_time)) +
+  geom_histogram(bins = 104, show.legend = F) +
+  labs(x = "Date", y = "Number of tweets", title = "Number of reply tweets") +
+  facet_wrap(~ reply, nrow=2) +
+  theme_solarized()
+
+
+reply_tweets_filtered_2014 <- reply_tweets_filtered %>% 
+  filter(tweet_time > as.Date("2014-06-01") & tweet_time < as.Date("2014-08-01")) %>% 
+  ggplot(aes(tweet_time)) +
+  geom_histogram(bins = 60, show.legend = F) +
+  labs(x = "Date", y = "Number of tweets", title = "Number of reply tweets", subtitle = "Between 06/01/2014 -- 01/08/2014") +
+  facet_wrap(~ reply, nrow=2) +
+  theme_solarized()
+
+number_of_reply_tweets + reply_tweets_filtered_2014
+
+
+```
+
+
+

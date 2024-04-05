@@ -1,0 +1,923 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Outline:
+
+Data import
+Exploratory data analysis
+Text mining (pairwise, correlation and topic modelling)
+Sentiment (changes over time, different sentiments for differnet factions, which sentiments lead to the most retweets / engagement)
+
+
+
+```{r error=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidyr)
+library(purrr)
+library(tidytext)
+library(widyr)
+library(ggraph)
+library(igraph)
+library(topicmodels)
+library(lubridate)
+library(Matrix)
+library(glmnet)
+library(doMC)
+library(stm)
+library(quanteda)
+library(rebus)
+library(sjPlot)
+library(devtools)
+options(scipen = 999, digits = 2)
+set.seed(12345)
+```
+
+###Data import
+
+```{r}
+tweets <- read_csv("http://nodeassets.nbcnews.com/russian-twitter-trolls/tweets.csv")
+head(tweets)
+```
+
+```{r}
+variables <- names(tweets)
+paste(variables)
+```
+
+
+```{r}
+users <- read_csv("http://nodeassets.nbcnews.com/russian-twitter-trolls/users.csv")
+head(users)
+```
+
+```{r}
+names(users)
+```
+
+
+
+```{r party_tweets}
+tweets$party <- NA
+clinton <- c("Clinton", "Hillary", "Hillary Clinton")
+trump <- c("Donald", "Trump", "Donald Trump")
+obama <- c("Barack", "Obama", "Barack Obama")
+sanders <- c("Bernie", "Sanders", "Bernie Sanders")
+politicians <- c(clinton, trump, obama, sanders)
+politicians <- paste(politicians, collapse = "|")
+politicians <- tolower(politicians)
+
+party_tweets <- tweets %>% 
+  mutate(text = tolower(text)) %>% 
+  filter(str_detect(text, politicians))
+party_tweets$party <- str_extract(party_tweets$text, politicians)
+
+party_tweets$party[party_tweets$party == "barack"] <- "Obama"
+party_tweets$party[party_tweets$party == "obama"] <- "Obama"
+party_tweets$party[party_tweets$party == "bernie"] <- "Sanders"
+party_tweets$party[party_tweets$party == "sanders"] <- "Sanders"
+party_tweets$party[party_tweets$party == "clinton"] <- "Clinton"
+party_tweets$party[party_tweets$party == "hillary"] <- "Clinton"
+party_tweets$party[party_tweets$party == "trump"] <- "Trump"
+party_tweets$party[party_tweets$party == "donald"] <- "Trump"
+
+table(party_tweets$party)
+
+```
+
+
+```{r}
+tweets$party <- NA
+clinton <- c("Clinton", "Hillary", "Hillary Clinton")
+trump <- c("Donald", "Trump", "Donald Trump")
+obama <- c("Barack", "Obama", "Barack Obama")
+sanders <- c("Bernie", "Sanders", "Bernie Sanders")
+politicians <- c(clinton, trump, obama, sanders)
+politicians <- paste(politicians, collapse = "|")
+politicians <- tolower(politicians)
+
+party_tweets_all <- tweets %>% 
+  mutate(text = tolower(text)) %>% 
+  mutate(party = ifelse(str_detect(text, politicians) == TRUE, str_match(text, politicians), "No Party"))
+
+
+party_tweets_all$party[party_tweets_all$party == "barack"] <- "Obama"
+party_tweets_all$party[party_tweets_all$party == "obama"] <- "Obama"
+party_tweets_all$party[party_tweets_all$party == "bernie"] <- "Sanders"
+party_tweets_all$party[party_tweets_all$party == "sanders"] <- "Sanders"
+party_tweets_all$party[party_tweets_all$party == "clinton"] <- "Clinton"
+party_tweets_all$party[party_tweets_all$party == "hillary"] <- "Clinton"
+party_tweets_all$party[party_tweets_all$party == "trump"] <- "Trump"
+party_tweets_all$party[party_tweets_all$party == "donald"] <- "Trump"
+
+table(party_tweets_all$party)
+```
+
+
+###Exploratory Data Analysis
+
+```{r time_distribution}
+ggplot(tweets, aes(created_str)) +
+  geom_histogram(bins = 100) +
+  labs(x = "Date", y = "Number of tweets", title = "Number of tweets between 2015 and 2017")
+```
+
+
+```{r active_days}
+most_active_days <- tweets %>% 
+  mutate(created_str = floor_date(created_str, unit = "1 day")) %>% 
+  count(created_str, sort = T) 
+```
+
+```{r active_days_2}
+most_active_days %>% 
+  mutate(created_str = reorder(created_str, n)) %>% 
+  head(n = 10) %>% 
+  ggplot(aes(created_str, n)) +
+  geom_col() +
+  coord_flip() +
+  labs(title = "10 most 'active' days", y = "Number of tweets", x = "Date of tweet")
+```
+Interestingly, the days where the IRA were most active all fell in a short period around the autumn of 2016.
+
+
+```{r}
+most_active_days %>% 
+  ggplot(aes(n)) +
+  geom_histogram() +
+  scale_x_log10() +
+  labs(title = "Number of days with 'n' amount of tweets on log scale", y = "")
+ 
+```
+
+Some days (nearly 40) we saw as few as 1 tweet being published by the IRA, other days it could be as high as 4000. 
+
+```{r active_days_3}
+most_active_day <- tweets %>% 
+  mutate(created_str = floor_date(created_str, unit = "1 day")) %>% 
+  filter(created_str == as.Date("2016-10-06"))
+```
+I'm going to save this for later and do some textual analysis. 
+
+```{r popular_hashtags}
+tweets %>% 
+  count(hashtags, sort = T) %>% 
+  filter(hashtags != "[]") %>% 
+  filter(n > 500) %>% 
+  mutate(hashtags = reorder(hashtags, n)) %>% 
+  ggplot(aes(x = hashtags, y = n)) +
+  geom_col() +
+  coord_flip() +
+  labs(title = "Most popular hashtags", x = "Hashtags", y = "Number of occurances")
+```
+
+```{r retweet_count}
+tweets %>% 
+  ggplot(aes(retweet_count)) +
+  geom_histogram() +
+  scale_x_log10() +
+  labs(title = "Retweet count on log scale", y = "", x = "Number of retweets on each tweet")
+```
+
+```{r favourite_count}
+tweets %>% 
+  ggplot(aes(favorite_count)) +
+  geom_histogram() +
+  scale_x_log10() +
+  labs(title = "Favourite count on log scale", y = "", x = "Number of favourites on each tweet")
+
+```
+
+```{r friend_count}
+users %>% 
+  ggplot(aes(friends_count)) +
+  geom_histogram() +
+  scale_x_log10() +
+  labs(caption = "Normal log distribution with left skew", x = "Friend count", title = "Distribution of 'friends' on a log scale")
+#normal log distribution with left skew
+```
+
+```{r}
+corr <- as.data.frame(cor(tweets$retweet_count, tweets$favorite_count, use = "complete.obs"))
+corr <- round(corr, digits = 2)
+
+ggplot(tweets, aes(x = favorite_count, y = retweet_count)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(title = "Correlation between favourite count and retweet count", x = "Favourite count", y = "Retweet count", caption = paste("Correlation = ", corr))
+
+```
+
+
+```{r location}
+
+#Quickly recode
+users$location[users$location == "United States"] <- "USA"
+users$location[users$location == "US"] <- "USA"
+users$location[users$location == "Москва"] <- "Россия"
+users$location[users$location == "Москва, Россия"] <- "Россия"
+users$location[users$location == "Atlanta, GA"] <- "Atlanta"
+
+users %>% 
+  select(location) %>% 
+  na.omit() %>% 
+  group_by(location) %>% 
+  count(location, sort = T) %>% 
+  ungroup()  %>% 
+  filter(n > 3) %>% 
+  mutate(location = reorder(location, n)) %>% 
+  ggplot(aes(location, n)) +
+  geom_col() +
+  coord_flip() +
+  labs(x = "User location", y = "Number of tweets", title = "Number of tweets by location")
+```
+I find it interesting that some accounts are openly tweeting from Russia..
+
+
+####Key findings from EDA:**
+* There were accounts openly tweeting from Russia
+* Autumn of 2016 saw by far the heaviest activity
+* Some days saw as few as 1 tweet being published, others as high as 4000
+* Hashtags were mainly political, with some non-political ones. 
+
+###Textual analysis - what themes come up? 
+
+```{r custom_stop_words}
+#For future use lets make a list of words we want to remove
+
+custom_stop_words <- bind_rows(tibble(word = c("https", "t.co", "rt", "amp"), 
+                                      lexicon = c("custom")),
+                               stop_words) 
+```
+
+
+```{r prolific_users}
+tweets %>%
+  count(user_key, sort = T) %>% 
+  head()
+
+```
+Amelia Baldwin is the most prolific twitter, accounting for nearly 5% of all tweets. 
+
+Lets check a sample of this accounts most engaged with tweets. 
+
+```{r amelia_baldwin}
+amelia_baldwin <- tweets %>% 
+  filter(user_key == "ameliebaldwin") 
+
+amelia_baldwin %>% 
+  arrange(desc(retweet_count)) %>% 
+  head(n = 10) %>% 
+  select(text)
+```
+Interestly, there is very little engagement (retweets, favourites) with the tweets. Particularly relevant given that all these tweets are coming from a network of accounts, that could certainly promote them more if wanted. Evidence of astro-turfing?
+
+
+Lets see what she's tweeting about more broadly:
+```{r amelia_baldwin_2}
+amelia_baldwin %>% 
+  filter(user_key == "ameliebaldwin") %>% 
+  unnest_tokens(word, text, token = "tweets") %>% 
+  filter(!word %in% custom_stop_words$word) %>% 
+  count(word, sort = T)
+```
+
+Lets check out that busiest day I identified earlier:
+
+```{r}
+most_active_day %>% 
+  unnest_tokens(word, text, token = "tweets") %>% 
+  filter(!word %in% custom_stop_words$word) %>% 
+  count(word, sort = T) %>% 
+  filter(n > 100) %>%
+  mutate(word = reorder(word,n)) %>% 
+  ggplot(aes(word, n)) +
+  geom_col() +
+  coord_flip()
+```
+Hmm, not that much of interest. I wonder if there's a better way to find out what themes were tweeted about on that day. 
+
+I'm going to try out topic modelling and see if it spots any different themes.
+
+```{r october_lda, fig.height = 20, fig.width=20}
+most_active_tokens <- most_active_day %>% 
+  mutate(row = row_number()) %>% 
+  unnest_tokens(word, text, token = "tweets") %>% 
+  filter(!word %in% custom_stop_words$word)
+
+most_active_dtm <-  most_active_tokens %>% 
+  count(row, word) %>% 
+  cast_dtm(row, word, n)
+
+most_active_lda <- LDA(most_active_dtm, k = 64, control = list(seed = 1234))
+
+most_active_topic_terms <- most_active_lda %>% 
+  tidy(matrix = "beta") %>% 
+  group_by(topic) %>% 
+  top_n(15, beta) %>% 
+  ungroup() %>% 
+  arrange(topic, -beta) 
+  
+most_active_topic_terms %>% 
+  mutate(term = reorder(term, beta)) %>% 
+  ggplot(aes(x= term, y = beta, fill = topic)) +
+  geom_col(show.legend = F) +
+  facet_wrap(~ topic, scales = "free_y") +
+  coord_flip()  
+  
+```
+
+```{r october_lda_gamma}
+tidy(most_active_lda, matrix = "gamma") %>% 
+  arrange(desc(gamma)) %>% 
+  ggplot(aes(gamma)) +
+  geom_histogram() +
+  scale_y_log10() +
+  labs(title = "Distribution of probabilities for all topics",
+       y = "Number of documents", x = expression(gamma))
+```
+
+Not too convinced by the gamma ratio here but largely there seems to be more discussion around a coming hurricane on that day. 
+
+OK, lets check out the whole corpus
+
+```{r tokenise}
+tweet_tokens <- tweets %>% 
+  select(user_id, user_key, text, created_str) %>% 
+  na.omit() %>% 
+  mutate(row= row_number()) %>% 
+  unnest_tokens(word, text, token = "tweets") %>% 
+  filter(!word %in% custom_stop_words$word)
+
+tweet_tokens %>%
+  count(word, sort = T)
+```
+They definitely were aiming to boost the profile of Trump
+
+Now I'm going to look at  bigram relations to see which words frequently come together. 
+
+```{r bigrams}
+bigrams <- tweets %>% 
+  unnest_tokens(bigram, text, token = "ngrams", n = 2) #re-tokenise our tweets with bigrams. 
+
+bigrams_separated <- bigrams %>% 
+  separate(bigram, c("word_1", "word_2"), sep = " ")
+
+bigrams_filtered <- bigrams_separated %>%
+  filter(!word_1 %in% custom_stop_words$word) %>%
+  filter(!word_2 %in% custom_stop_words$word)
+
+bigram_counts <- bigrams_filtered %>% 
+  count(word_1, word_2 , sort = T)
+
+```
+
+
+Now lets graph it:
+
+```{r bigram_graph}
+bigram_graph <- bigram_counts %>% 
+  filter(n > 250) %>% 
+  graph_from_data_frame()
+
+
+a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
+
+ggraph(bigram_graph, layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n), show.legend = FALSE,
+                 arrow = a, end_cap = circle(.07, 'inches')) +
+  geom_node_point(color = "lightblue", size = 5) +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
+  theme_void()
+```
+
+This graph shows the words that most frequently appear next to each other, hence we see a lot of names. However, it might be more useful to look at what words appear in the same tweet, but not neccesarily next to each other, if we want to get a better understanding of the themes emerging.
+
+```{r pairwise_count}
+tweet_words <- tweets %>% 
+  mutate(row = row_number()) %>% 
+  unnest_tokens(word, text) %>% 
+  filter(!word %in% custom_stop_words$word)
+
+tweet_pairs <- tweet_words %>% 
+  pairwise_count(word, row, sort = T)
+
+tweet_pairs_graph <- tweet_pairs %>% 
+  filter(n > 500) %>% 
+  graph_from_data_frame()
+
+ggraph(tweet_pairs_graph, layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n), show.legend = FALSE,
+                 arrow = a, end_cap = circle(.07, 'inches')) +
+  geom_node_point(color = "lightblue", size = 5) +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
+  theme_void()
+```
+
+I don't know what this 'merkelmussbleiben' means... lets take a look.
+
+```{r}
+tweets %>% 
+  filter(str_detect(text, "Merkelmussbleiben")) %>% 
+  select(text)
+```
+OK so we see that it's not just American politics but also German. 
+
+```{r}
+table(users$lang)
+```
+
+
+Lets finally consider using correlation of words to draw out themes. In this instance we are looking at which words appear most frequently together relative to how often they appear with other words. For example a correlation of 0.99 of 'opiceisis' and 'iceisis' suggest that these words are almost always found together and never apart.
+```{r tweet_cor}
+tweet_cor <- tweet_words %>% 
+  group_by(word) %>% 
+  filter(n() > 200) %>% 
+  pairwise_cor(word, row, sort = T)
+
+tweet_cor %>% 
+  filter(correlation > .4) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_alpha = correlation), show.legend = FALSE) +
+  geom_node_point(color = "lightblue", size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE) +
+  theme_void()
+```
+
+Given everything here it's really hard to conclude anything other than the IRA were overtly pro Trump Lets see what topic modelling reveals about different agendas. 
+
+###Topic modelling
+
+```{r topic_modelling, fig.width=50, fig.height=50 }
+```
+
+
+tweets_dtm <- tweet_tokens %>% 
+  count(row, word) %>% 
+  cast_dtm(row, word, n)
+
+tweets_lda <- LDA(tweets_dtm, k = 56, control = list(seed = 1234))
+
+tweet_topic_terms <- tweets_lda %>% 
+  tidy(matrix = "beta") %>% 
+  group_by(topic) %>% 
+  top_n(15, beta) %>% 
+  ungroup() %>% 
+  arrange(topic, -beta) 
+  
+tweet_topic_terms %>% 
+  mutate(term = reorder(term, beta)) %>% 
+  ggplot(aes(x= term, y = beta, fill = topic)) +
+  geom_col(show.legend = F) +
+  facet_wrap(~ topic, scales = "free_y") +
+  coord_flip()
+
+
+Not sure if this is useful because we have so many different topics
+
+beta_spread <- tweets_lda %>%
+  tidy(matrix = "beta") %>% 
+  mutate(topic = paste0("topic", topic)) %>%
+  spread(topic, beta) %>%
+  filter(topic1 > .001 | topic2 > .001) %>%
+  mutate(log_ratio = log2(topic2 / topic1))
+
+beta_spread %>% 
+  mutate(term = reorder(term, log_ratio)) %>% 
+  top_n(20, abs(log_ratio)) %>% 
+  ggplot(aes(term, log_ratio, fill = log_ratio > 0)) +
+  geom_col(show.legend = F) +
+  coord_flip() +
+  labs(y =  "Words with the greatest difference in β between topic 2 and topic 1", x = "Terms")
+
+
+
+lda_gamma <- tidy(tweets_lda, matrix = "gamma")
+
+lda_gamma %>% 
+  arrange(desc(gamma))
+
+
+ggplot(lda_gamma, aes(gamma)) +
+  geom_histogram() +
+  scale_y_log10() +
+  labs(title = "Distribution of probabilities for all topics",
+       y = "Number of documents", x = expression(gamma))
+
+
+
+Lets go back to the busiest day - is there any way of finding out about any unusual topics? 
+```{r october_lda, fig.height = 20, fig.width=20}
+most_active_tokens <- most_active_day %>% 
+  mutate(row = row_number()) %>% 
+  unnest_tokens(word, text, token = "tweets") %>% 
+  filter(!word %in% custom_stop_words$word)
+
+most_active_dtm <-  most_active_tokens %>% 
+  count(row, word) %>% 
+  cast_dtm(row, word, n)
+
+most_active_lda <- LDA(most_active_dtm, k = 64, control = list(seed = 1234))
+
+most_active_topic_terms <- most_active_lda %>% 
+  tidy(matrix = "beta") %>% 
+  group_by(topic) %>% 
+  top_n(15, beta) %>% 
+  ungroup() %>% 
+  arrange(topic, -beta) 
+  
+most_active_topic_terms %>% 
+  mutate(term = reorder(term, beta)) %>% 
+  ggplot(aes(x= term, y = beta, fill = topic)) +
+  geom_col(show.legend = F) +
+  facet_wrap(~ topic, scales = "free_y") +
+  coord_flip()  
+  
+```
+
+```{r october_lda_gamma}
+tidy(most_active_lda, matrix = "gamma") %>% 
+  arrange(desc(gamma)) %>% 
+  ggplot(aes(gamma)) +
+  geom_histogram() +
+  scale_y_log10() +
+  labs(title = "Distribution of probabilities for all topics",
+       y = "Number of documents", x = expression(gamma))
+```
+
+Not too convinced by the gamma ratio here but largely there seems to be more discussion around a coming hurricane on that day. 
+
+
+####Topic modelling (stm) by party
+
+I'm going to break this down into four documents - each document being a series of tweets mentioning each politician
+
+```{r tf_idf}
+tidy_party_tweets <- party_tweets %>% 
+  unnest_tokens(word, text, token = "tweets") %>% 
+  filter(!word %in% custom_stop_words$word)
+
+tidy_party_tweets_filtered <- tidy_party_tweets %>% 
+  filter(!str_detect(word, pattern = START %R% "@")) #remove @s
+
+
+party_tf_idf <- tidy_party_tweets_filtered %>% 
+  count(party, word, sort = TRUE) %>% 
+  bind_tf_idf(word, party, n) %>% 
+  arrange(-tf_idf) %>%
+  group_by(party) %>%
+  top_n(15) %>%
+  ungroup()
+
+
+party_tf_idf_graph <- party_tf_idf %>% 
+  mutate(word = reorder(word, tf_idf)) %>% 
+  ggplot(aes(word, tf_idf, fill = party)) +
+  geom_col(alpha = 0.8, show.legend = FALSE) +
+  scale_x_reordered() +
+  facet_wrap(~ party, scales = "free") +
+  coord_flip()
+party_tf_idf_graph
+```
+
+
+####STM
+
+```{r}
+party_dfm <- tidy_party_tweets_filtered %>% 
+  count(party, word, sort = T) %>% 
+  cast_dfm(party, word, n) 
+
+structural_tm <- stm(party_dfm, K = 12, verbose = FALSE, init.type = "Spectral")
+  
+```
+
+
+
+```{r fig.height= 8, fig.width= 12}
+
+party_tweets_all <- party_tweets_all %>% 
+  select(party, text, created_str, user_key) %>% 
+  filter(!is.na(party))
+
+party_tweets_all_tidy <- party_tweets_all %>% 
+  unnest_tokens(word, text, token = "tweets") %>% 
+  filter(!word %in% custom_stop_words$word)
+
+party_all_tf_idf <- party_tweets_all_tidy %>% 
+  count(party, word, sort = TRUE) %>% 
+  bind_tf_idf(word, party, n) %>% 
+  arrange(-tf_idf) %>%
+  group_by(party) %>%
+  top_n(15) %>%
+  ungroup()
+
+
+party_all_tf_idf_graph <- party_all_tf_idf %>% 
+  mutate(word = reorder(word, tf_idf)) %>% 
+  ggplot(aes(word, tf_idf, fill = party)) +
+  geom_col(alpha = 0.8, show.legend = FALSE) +
+  scale_x_reordered() +
+  facet_wrap(~ party, scales = "free") +
+  coord_flip()
+```
+
+
+
+
+
+###Sentiment analysis 
+
+Need do a bit more data cleaning. The issue is that when accounting for bigrams it doesn't automatically consider whether words are preceded by a negation. This is still quite a rudimentary approach in a relatively nascent field of research, but will suffice for what we are intending to do. 
+
+```{r}
+negation_words <- c("not", "no", "never", "without", "won't", "dont", "doesnt", "doesn't", "don't", "can't") #n.b. I think the tokenisation process removes apostrophes and other punctuation but not sure - defintiely performs tolower().
+
+not_words <- bigrams_separated %>%
+  filter(word_1 %in% negation_words) %>%
+  inner_join(get_sentiments("afinn"), by = c(word_2 = "word")) %>%
+  count(word_2, value, sort = TRUE) %>% 
+  mutate(value = value * -1) %>% 
+  mutate(contribution = value * n)
+```
+
+```{r}
+not_words %>% 
+  mutate(contribution = value * n) %>% 
+  arrange(desc(abs(contribution))) %>% 
+  top_n(25) %>% 
+  mutate(word_2 = reorder(word_2, contribution)) %>% 
+  ggplot(aes(word_2, contribution, fill = contribution > 0)) +
+  geom_col(show.legend = F) +
+  coord_flip() +
+  labs(x = "Words preceded by a negative", y = "Sentiment score * number of occurances")
+```
+
+```{r}
+not_word_contribution <- not_words %>% 
+  mutate(contribution = 0 - value * n)
+sum(not_word_contribution$contribution)
+
+not_words %>% 
+  filter(word_2 == "love")
+
+```
+
+
+```{r sentiment_analysis}
+sentiment <- tweet_tokens %>% 
+  count(word, sort = T) %>% 
+  inner_join(get_sentiments("afinn"), by = "word") %>% 
+  mutate(total_score = n * value)
+sentiment
+```
+
+```{r}
+
+sentiment %>% 
+  top_n(20, abs(total_score)) %>% 
+  mutate(word = reorder(word, total_score)) %>% 
+  ggplot(aes(word, total_score, fill = total_score > 0)) +
+  geom_col(show.legend = F) +
+  coord_flip()
+```
+
+
+
+```{r sentiment_over_time}
+
+sentiment_over_time <- tweet_tokens %>% 
+  select(word, created_str) %>% 
+  inner_join(get_sentiments("afinn"), by = "word") %>% 
+  mutate(created_str = floor_date(created_str, unit = "1 day")) %>% 
+  add_count(created_str, word) %>%
+  mutate(total_score = value * n) %>%
+  group_by(created_str)
+
+sentiment_over_time %>% 
+  filter(created_str != as.Date("2016-07-21")) %>% 
+  summarise(by_day_avg = sum(total_score) / n()) %>% 
+  ggplot(aes(created_str, by_day_avg, fill = by_day_avg > 0)) +
+  geom_col(show.legend = F) + 
+  ylab("") +
+  xlab("net sentiment") +
+  scale_y_continuous(labels = scales::comma)
+```
+
+
+```{r}
+sentiment_over_time %>% 
+  summarise(by_day = sum(total_score))  %>% 
+  arrange(desc(abs(by_day))) %>% 
+  mutate(row = row_number()) 
+```
+
+```{r}
+sentiment_over_time %>% 
+  filter(created_str == as.Date("2016-07-21")) %>% 
+  summarise(sum = sum(total_score))
+
+```
+
+```{r}
+tweets %>% 
+  filter(str_detect(text, "blacklivesmatter"))
+```
+
+
+
+What the fuck is happening here. Look into it later. 
+
+I wanna see if there was a particular negative / positive association with certain topics or politicians. First lets identify these tweets:
+
+
+```{r party_tweets_2}
+party_tweets %>%  
+  ggplot(aes(party)) +
+  geom_bar() +
+  labs(Title = "Number of mentions of each politician", x = "Politician", y = "")
+```
+
+```{r time_dist_by_party}
+party_tweets %>% 
+  ggplot(aes(created_str, fill = party)) +
+  geom_histogram() +
+  facet_wrap(~ party, scales= "free_y", ncol = 1)
+```
+
+OK so relatively speaking there is lots of mention of Sanders, although the actual counts for Sanders are not very high (change free_y to see non relative). 
+
+```{r retweet_by_party}
+party_tweets %>% 
+  ggplot(aes(retweet_count)) +
+  geom_histogram() +
+  facet_wrap(~ party) + 
+  scale_x_log10()
+```
+
+```{r}
+summary_of_retweets <- party_tweets %>% 
+  filter(!is.na(retweet_count)) %>% 
+  group_by(party) %>% 
+  summarise(total_rt = sum(retweet_count), num_of_tweets = sum(party == 'Clinton', party == 'Trump', party == 'Barack', party == 'Sanders')) %>% 
+  mutate(avg_rt = total_rt / num_of_tweets) %>% 
+  filter(!is.infinite(avg_rt))
+
+summary_of_retweets %>% 
+  filter(num_of_tweets > 0) %>% 
+  ggplot(aes(party, avg_rt, fill = party)) +
+  geom_col() +
+  labs(x = "Party", y = "Average number of retweets")
+```
+Looks like Clinton was more 'popular' on social media. Are these statistically significant differences?
+
+```{r}
+summary_of_retweets %>% 
+  na.omit() %>% 
+  aov(party ~ avg_rt, data = .)
+
+aov_rts <- aov(summary_of_retweets$party ~ summary_of_retweets$avg_rt)
+```
+
+```{r}
+trump <- party_tweets %>% 
+  filter(party == "Trump") %>% 
+  filter(!is.na(retweet_count))
+
+
+clinton <- party_tweets %>% 
+  filter(party == "Clinton") %>% 
+  filter(!is.na(retweet_count))
+
+t.test(trump$retweet_count ~ clinton$retweet_count)
+
+```
+
+
+Lets do some sentimental analysis
+
+```{r} 
+party_tokens <- party_tweets %>% 
+  unnest_tokens(word, text, token = "tweets") %>% 
+  filter(word %in% custom_stop_words$word)
+
+party_sentiment <- party_tokens %>% 
+  inner_join(get_sentiments("afinn"), by = "word")
+
+party_sentiment_over_time <- party_sentiment %>% 
+  mutate(created_str = floor_date(created_str, unit = "1 day")) %>% 
+  add_count(created_str, word) %>%
+  mutate(total_score = value * n) %>%
+  group_by(created_str) 
+
+```
+
+
+```{r}
+party_sentiment_over_time %>% 
+  select(created_str, word, value, n, total_score, party) %>% 
+  arrange(desc(abs(total_score)))
+
+```
+
+
+
+```{r fig.height=8, fig.width=8}
+party_sentiment_over_time %>% 
+  select(created_str, word, value, n, total_score, party) %>% 
+  group_by(created_str) %>% 
+  ggplot(aes(created_str, mean(total_score) , fill = party)) +
+  geom_col(show.legend = F) + 
+  ylab("") +
+  xlab("net sentiment") +
+  scale_y_continuous(labels = scales::comma) +
+  facet_wrap(~party)
+
+```
+
+
+###Bing sentiment analysis
+```{r bing_tokens}
+
+bing_word_counts <- tweet_tokens %>% 
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = T) %>% 
+  ungroup() %>% 
+  filter(word != "trump")
+
+bing_word_counts %>% 
+  group_by(sentiment) %>% 
+  top_n(10) %>% 
+  ungroup() %>% 
+  mutate(word = reorder(word, n)) %>% 
+  ggplot(aes(word, n, fill = sentiment)) +
+  geom_col() +
+  facet_wrap(~ sentiment, scales = "free_y") +
+  coord_flip()
+  
+bing_word_counts %>% 
+  sum(n) %>% 
+  
+
+    
+  
+```
+
+```{r}
+
+bing_word_counts %>% 
+  group_by(sentiment) %>% 
+  top_n(10) %>% 
+  ungroup() %>% 
+  mutate(word = reorder(word, n)) %>% 
+  ggplot(aes(word, n, fill = sentiment)) +
+  geom_col() +
+  facet_wrap(~ party, scales = "free_y") +
+  coord_flip()
+  
+```
+
+
+###Lasso regression
+
+```{r}
+tweet_tokens_filtered <- tweet_tokens %>%
+  distinct(row, word) %>%
+  add_count(word) %>%
+  filter(n >= 500)
+
+tweet_tokens_matrix <- tweet_tokens_filtered %>% 
+    cast_sparse(row, word)
+
+tweet_ids <- as.integer(rownames(tweet_tokens_matrix))
+retweets <- tweets$retweet_count[tweet_ids]
+retweets <- !is.na(retweets)
+
+registerDoMC(cores = 4)
+cv_glmnet_model <- cv.glmnet(tweet_tokens_matrix, retweets)
+plot(cv_glmnet_model)
+```
+
+```{r}
+lexicon <- cv_glmnet_model$glmnet.fit %>% 
+  tidy() %>% 
+  filter(lambda == cv_glmnet_model$lambda.1se,
+         term != "(Intercept)")
+
+lexicon %>% 
+  arrange(estimate) %>% 
+  group_by(direction = ifelse(estimate < 0, "Negative", "Positive")) %>% 
+  top_n(10, abs(estimate)) %>% 
+  ungroup() %>% 
+  mutate(term = fct_reorder(term, estimate)) %>% 
+  ggplot(aes(term, estimate, fill = direction)) +
+  geom_col() +
+  coord_flip() +
+  labs(y = "Estimated effect of word on the retweets")
+
+```
+
+
+

@@ -1,0 +1,31 @@
+---
+title: "CA_aid_analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+options(scipen = 999, digits = 3)
+```
+
+
+```{r}
+
+library(tidyverse)
+
+aid_data <- read_csv('us_foreign_aid_complete.csv')
+
+aid_data <- aid_data %>% 
+  filter(country_name %in% c('Kazakhstan', 'Tajikistan', 'Uzbekistan', 'Turkmenistan', 'Kyrgyzstan'))
+
+
+aid_data %>% 
+  mutate(fiscal_year = as.numeric(fiscal_year)) %>% 
+  ggplot(aes(fiscal_year, current_amount)) +
+  geom_col() +
+  facet_wrap(~ country_name)
+
+
+```
+

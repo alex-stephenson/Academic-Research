@@ -1,0 +1,27 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1583067165795.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2527271771",
+    "id" : "1B5E2115",
+    "lastKnownWriteTime" : 1612873367,
+    "last_content_update" : 1612873367497,
+    "path" : "~/Desktop/R_Studio_Work/Eurasia/eurasia/EU Doc analysis.Rmd",
+    "project_path" : "EU Doc analysis.Rmd",
+    "properties" : {
+        "cursorPosition" : "35,0",
+        "last_setup_crc32" : "",
+        "scrollLine" : "0",
+        "tempName" : "Untitled2"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

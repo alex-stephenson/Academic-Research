@@ -1,0 +1,331 @@
+---
+title: "EU_analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(pdftools)
+library(tidyverse)
+library(tidytext)
+library(ggsci)
+
+theme_set(theme_light())
+```
+
+
+```{r}
+library(tidyverse)
+sample <- read_csv('sample.csv', cols())
+sample
+
+
+```
+
+
+```{r}
+sample_1 <- read_csv('sample_1.csv', na = ".", col_names = T)
+sample <- read_csv('sample.csv', col_names = T, cols(grade = col_integer(), student = col_character()))
+
+sample_2 <- read_csv('sample.csv') %>% 
+  mutate(grade = as.integer(grade),
+         student = as.character(student))
+
+
+
+```
+
+
+
+### 2019
+
+```{r}
+EU_text_2019 <- pdf_text("2019_EPRS_BRI633162_EN.pdf") %>% 
+  readr::read_lines() %>% 
+  str_squish() #extract the text
+
+EU_text_2019_long <- paste(EU_text_2019, collapse = ' ') #transform text into one long string
+
+EU_text_2019_long <- EU_text_2019_long %>% 
+  as.data.frame() #convert to data frame
+
+colnames(EU_text_2019_long) <- c('Text') #add column names
+
+EU_text_2019_long <- EU_text_2019_long %>%
+  mutate(Year = 2019) %>% #add year variabke
+  mutate(Text = as.character(Text)) #convert to character variable
+
+
+EU_text_2019_tokens <- EU_text_2019_long %>% 
+  unnest_tokens(tokens, Text, token = "words") #tokenise the data
+
+
+trade_terms <- c('trade', 'surplus', 'economy', 'debt', 'finance', 'resources', 'resource', 'gas', 'oil', 'investment', 'economic', 'budget')
+political_terms <- c('democracy', 'rights', 'corruption', 'poverty', 'education', 'governance')
+
+trade_2019 <- EU_text_2019_tokens %>% 
+  filter(tokens %in% trade_terms)
+
+
+political_2019 <- EU_text_2019_tokens %>% 
+  filter(tokens %in% political_terms)
+
+```
+
+These steps are repeated for all PDFs except 2007
+
+
+## 2008
+
+```{r}
+EU_text_2008 <- pdf_text("2008_progress_report_0609_en.pdf") %>% 
+  readr::read_lines() %>% 
+  str_squish()
+
+EU_text_2008_long <- paste(EU_text_2008, collapse = ' ')
+
+EU_text_2008_long <- EU_text_2008_long %>% 
+  as.data.frame() 
+
+colnames(EU_text_2008_long) <- c('Text')
+
+EU_text_2008_long <- EU_text_2008_long %>%
+  mutate(Year = 2008) %>% 
+  mutate(Text = as.character(Text))
+
+
+EU_text_2008_tokens <- EU_text_2008_long %>% 
+  unnest_tokens(tokens, Text, token = "words")
+
+
+
+trade_2008 <- EU_text_2008_tokens %>% 
+  filter(tokens %in% trade_terms)
+
+
+political_2008 <- EU_text_2008_tokens %>% 
+  filter(tokens %in% political_terms)
+
+```
+
+
+
+### 2007
+
+For unknown reasons the initial EU and Central Asia: Startegy for a New Partnership cannot be parsed with normal methods (effectively the EU have encrypted the file to stop copy and pasting). Instead I use an optical character recongition method. This comes with the caveat that the the parsing may not be perfect. However, the quality of the PDF is high and from manual inspection has been accurate. Only the first line is different, and takes a few minutes to run. 
+
+
+```{r}
+
+text <- pdftools::pdf_ocr_text("https://eeas.europa.eu/sites/eeas/files/st_10113_2007_init_en.pdf", pages = NULL)
+
+EU_text_2007 <- text %>%  
+  readr::read_lines() %>% 
+  str_squish()
+
+EU_text_2007_long <- paste(EU_text_2007, collapse = ' ')
+
+EU_text_2007_long <- EU_text_2007_long %>% 
+  as.data.frame() 
+
+colnames(EU_text_2007_long) <- c('Text')
+
+EU_text_2007_long <- EU_text_2007_long %>%
+  mutate(Year = 2007) %>% 
+  mutate(Text = as.character(Text))
+
+
+EU_text_2007_tokens <- EU_text_2007_long %>% 
+  unnest_tokens(tokens, Text, token = "words")
+
+
+trade_2007 <- EU_text_2007_tokens %>% 
+  filter(tokens %in% trade_terms)
+
+
+politicaL_2007 <- EU_text_2007_tokens %>% 
+  filter(tokens %in% political_terms)
+
+```
+
+
+### 2011
+
+```{r}
+EU_text_2011 <- pdf_text("2011_EU parl res on state of implementation of EU strategy for CA.pdf") %>% 
+  readr::read_lines() %>% 
+  str_squish()
+
+EU_text_2011_long <- paste(EU_text_2011, collapse = ' ')
+
+EU_text_2011_long <- EU_text_2011_long %>% 
+  as.data.frame() 
+
+colnames(EU_text_2011_long) <- c('Text')
+
+EU_text_2011_long <- EU_text_2011_long %>%
+  mutate(Year = 2011) %>% 
+  mutate(Text = as.character(Text))
+
+
+EU_text_2011_tokens <- EU_text_2011_long %>% 
+  unnest_tokens(tokens, Text, token = "words")
+
+
+
+trade_2011 <- EU_text_2011_tokens %>% 
+  filter(tokens %in% trade_terms)
+
+
+political_2011 <- EU_text_2011_tokens %>% 
+  filter(tokens %in% political_terms)
+
+```
+
+### 2012
+
+```{r}
+EU_text_2012 <- pdf_text("2012_progress_report_en.pdf") %>% 
+  readr::read_lines() %>% 
+  str_squish()
+
+EU_text_2012_long <- paste(EU_text_2012, collapse = ' ')
+
+EU_text_2012_long <- EU_text_2012_long %>% 
+  as.data.frame() 
+
+colnames(EU_text_2012_long) <- c('Text')
+
+EU_text_2012_long <- EU_text_2012_long %>%
+  mutate(Year = 2012) %>% 
+  mutate(Text = as.character(Text))
+
+
+EU_text_2012_tokens <- EU_text_2012_long %>% 
+  unnest_tokens(tokens, Text, token = "words")
+
+
+trade_2012 <- EU_text_2012_tokens %>% 
+  filter(tokens %in% trade_terms)
+
+
+political_2012 <- EU_text_2012_tokens %>% 
+  filter(tokens %in% political_terms)
+
+```
+
+## 2015
+
+```{r}
+EU_text_2015 <- pdf_text("2015_Progress_Report_CA.pdf") %>% 
+  readr::read_lines() %>% 
+  str_squish()
+
+EU_text_2015_long <- paste(EU_text_2015, collapse = ' ')
+
+EU_text_2015_long <- EU_text_2015_long %>% 
+  as.data.frame() 
+
+colnames(EU_text_2015_long) <- c('Text')
+
+EU_text_2015_long <- EU_text_2015_long %>%
+  mutate(Year = 2015) %>% 
+  mutate(Text = as.character(Text))
+
+
+EU_text_2015_tokens <- EU_text_2015_long %>% 
+  unnest_tokens(tokens, Text, token = "words")
+
+
+trade_2015 <- EU_text_2015_tokens %>% 
+  filter(tokens %in% trade_terms)
+
+
+political_2015 <- EU_text_2015_tokens %>% 
+  filter(tokens %in% political_terms)
+
+```
+
+
+
+```{r}
+EU_text_2016 <- pdf_text("2016_CA_Strategy_Implementation_Review.pdf") %>% 
+  readr::read_lines() %>% 
+  str_squish()
+
+EU_text_2016_long <- paste(EU_text_2016, collapse = ' ')
+
+EU_text_2016_long <- EU_text_2016_long %>% 
+  as.data.frame() 
+
+colnames(EU_text_2016_long) <- c('Text')
+
+EU_text_2016_long <- EU_text_2016_long %>%
+  mutate(Year = 2016) %>% 
+  mutate(Text = as.character(Text))
+
+
+EU_text_2016_tokens <- EU_text_2016_long %>% 
+  unnest_tokens(tokens, Text, token = "words")
+
+trade_2016 <- EU_text_2016_tokens %>% 
+  filter(tokens %in% trade_terms)
+
+
+political_2016 <- EU_text_2016_tokens %>% 
+  filter(tokens %in% political_terms)
+
+```
+
+
+### data join 
+
+
+```{r}
+full_data <- rbind(EU_text_2007_tokens, EU_text_2008_tokens, EU_text_2011_tokens, EU_text_2012_tokens, EU_text_2015_tokens, EU_text_2016_tokens, EU_text_2019_tokens) #join all tokens into one single data frame
+```
+
+
+```{r}
+
+full_data_processed <- full_data %>% 
+  group_by(Year) %>% 
+  mutate(obs = n()) %>% 
+  ungroup() %>% 
+  filter(tokens %in% political_terms |
+          tokens %in% trade_terms) %>% #remove all non political or trade terms
+  mutate(theme = ifelse(tokens %in% political_terms, 'political\n(value based)\n', 'trade\n(interest based)')) %>% #label terms
+  mutate(theme = as.factor(theme)) %>% 
+  group_by(Year, theme) %>%
+  add_count(theme) %>% 
+  mutate(percent = (n / obs) * 100)
+
+annotation <- data.frame(
+  x = c(2008.5, 2017.5),
+  y = c(1.4, 1.4),
+  label = c("First EU\nCA Strategy\nImplemented", "Second EU\nCA Strategy\nImplemented"))
+
+graph_2 <- full_data_processed %>% 
+  select(percent) %>% 
+  distinct() %>% 
+  ggplot(aes(Year, percent, col = theme)) +
+  geom_line(size = 0.2, linetype = "dashed") +
+  #stat_smooth(geom ='line', se = F, alpha  = 0.5, method = "lm") +
+  geom_smooth(se = F, method = "lm", size = 1) +
+  geom_point(size = 1.6) +
+  geom_vline(xintercept = 2007, linetype ="dashed", size = 1.2, color = "grey") +
+  geom_vline(xintercept = 2019, linetype ="dashed", size = 1.2, color = "grey") +
+  labs(y = "Frequency of terms (%)", title = "Mentions of either trade or political terms in EU Central Asian Strategy Reports\nbetween 2007 and 2019", caption = "Fig 1") +
+  geom_label(data = annotation, aes( x=x, y=y, label=label),  color="black", size=3 , angle=45, fontface="bold", stat = "identity") +
+  scale_color_jco() +
+  scale_x_continuous(breaks = seq(2007, 2019, 2),
+                     labels = c(seq(2007, 2019, 2)))
+
+```
+
+
+
+

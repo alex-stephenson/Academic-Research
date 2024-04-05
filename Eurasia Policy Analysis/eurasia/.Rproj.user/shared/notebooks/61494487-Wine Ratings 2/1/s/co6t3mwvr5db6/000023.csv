@@ -1,0 +1,12 @@
+"0","q_subset <- qscores %>%
+select(department, hours) %>%
+group_by(department) %>%
+summarize(num_classes = n(), mean_hours = mean(hours), sd_hours = sd(hours)) %>%
+arrange(desc(num_classes)) %>%
+slice(1:3) %>%
+group_by(department) %>%
+dplyr::summarize(rnorm_values = rnorm(n = 3, mean = mean_hours, sd = sd_hours)) %>%
+arrange(department)
+"
+"2","Error: Column `rnorm_values` must be length 1 (a summary value), not 3
+"

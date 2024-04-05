@@ -1,0 +1,22 @@
+---
+title: "thomas_excel"
+author: "Alex Stephenson"
+date: "11/02/2021"
+output: html_document
+---
+
+
+
+```{r}
+library(tidyverse)
+
+holdings_1 <- readxl::read_excel("holdings_1_ex.xlsx", col_names = F)
+holdings_1$date <- holdings_1[[2,2]]
+holdings_1$fund <- holdings_1[[1, 2]]
+holdings_1$number <- holdings_1[[1, 1]]
+
+holdings_1 <- holdings_1[-1:-4,]
+
+?readxl::read_excel
+```
+

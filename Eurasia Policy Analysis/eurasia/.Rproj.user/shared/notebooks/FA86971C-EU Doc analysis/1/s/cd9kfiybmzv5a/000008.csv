@@ -1,0 +1,9 @@
+"0","sample <- read_csv('sample.csv')
+"
+"2","Parsed with column specification:
+cols(
+  grade = [32mcol_double()[39m,
+  student = [31mcol_character()[39m
+)
+"
+"0",""

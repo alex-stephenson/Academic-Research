@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1612539889600.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1298440375",
+    "id" : "AD4CC4C2",
+    "lastKnownWriteTime" : 1613649564,
+    "last_content_update" : 1613649564370,
+    "path" : "~/Desktop/R_Studio_Work/Tidy Tuesday/Tidy Tuesday/Wine Ratings 2.Rmd",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "346,0",
+        "last_setup_crc32" : "",
+        "scrollLine" : "315"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 17,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

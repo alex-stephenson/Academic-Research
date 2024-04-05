@@ -1,0 +1,33 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1583144821142.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "9AFAEE7D",
+    "lastKnownWriteTime" : 46,
+    "last_content_update" : 1583144821142,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "B2E6E041",
+        "caption" : "trade_2016",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=trade_2016&cache_key=B2E6E041",
+        "displayedObservations" : 72,
+        "environment" : "",
+        "expression" : "trade_2016",
+        "object" : "trade_2016",
+        "preview" : 0,
+        "totalObservations" : 72,
+        "variables" : 2
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 5,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_dataframe"
+}

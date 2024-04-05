@@ -1,0 +1,33 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1583073156013.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "E652B27D",
+    "lastKnownWriteTime" : 3131822209555779261,
+    "last_content_update" : 1583073156013,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "7A0C4617",
+        "caption" : "EU_text_2007_tokens",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=EU_text_2007_tokens&cache_key=7A0C4617",
+        "displayedObservations" : 603,
+        "environment" : "",
+        "expression" : "EU_text_2007_tokens",
+        "object" : "EU_text_2007_tokens",
+        "preview" : 0,
+        "totalObservations" : 603,
+        "variables" : 2
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 4,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_dataframe"
+}
